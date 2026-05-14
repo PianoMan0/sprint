@@ -1,0 +1,12 @@
+# Paste your Hack Club credentials into this file (or create `hackclub_creds.txt`)
+# You can use either key=value lines or plain lines:
+# Example key=value format:
+# HACKCLUB_CLIENT_ID=320a3ebcee3ad97f9e15bd89c8f9c3c2
+# HACKCLUB_CLIENT_SECRET=cfb10b8d49e83698cb9ea39ad34d16125e9dfa78f6401b3b988d47b3256e5089
+# HACKCLUB_REDIRECT_URI=https://dev.pianoman0.com/auth/callback.php
+
+# Or simple two-line format (client id on first line, client secret on second):
+# your_client_id_here
+# your_client_secret_here
+
+# Save as `hackclub_creds.txt` in the project root and the app will read it automatically.

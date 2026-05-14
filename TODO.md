@@ -1,0 +1,1 @@
+- Fix styling to match Hack Club theme
