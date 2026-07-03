@@ -6,33 +6,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validate_csrf_token($token)) {
         http_response_code(400);
-    <?php $githubClient = getenv('GITHUB_CLIENT_ID'); ?>
-        echo "<p>Invalid CSRF token.</p>";
-        exit;
+        $error = 'Invalid CSRF token.';
     }
 
-    $name = trim((string)($_POST['name'] ?? ''));
-    $profile_text = trim((string)($_POST['profile'] ?? ''));
-    if ($name === '') {
-        $error = 'Name cannot be empty.';
-    } else {
-        if (!empty($db_connection_failed)) {
-            $_SESSION['user']['name'] = $name;
-            $_SESSION['user']['profile'] = $profile_text;
-            $success = 'Profile updated locally (DB unavailable).';
+    if (empty($error)) {
+        $name = trim((string)($_POST['name'] ?? ''));
+        $profile_text = trim((string)($_POST['profile'] ?? ''));
+
+        if ($name === '') {
+            $error = 'Name cannot be empty.';
         } else {
-            try {
-                $stmt = $pdo->prepare("UPDATE users SET name = ?, profile = ? WHERE id = ?");
-                $stmt->execute([$name, $profile_text, current_user_id()]);
+            if (!empty($db_connection_failed)) {
                 $_SESSION['user']['name'] = $name;
                 $_SESSION['user']['profile'] = $profile_text;
-                $success = 'Profile updated.';
-            } catch (Exception $e) {
-                $error = 'Update failed: ' . htmlspecialchars($e->getMessage());
+                $success = 'Profile updated locally (DB unavailable).';
+            } else {
+                try {
+                    $stmt = $pdo->prepare("UPDATE users SET name = ?, profile = ? WHERE id = ?");
+                    $stmt->execute([$name, $profile_text, current_user_id()]);
+                    $_SESSION['user']['name'] = $name;
+                    $_SESSION['user']['profile'] = $profile_text;
+                    $success = 'Profile updated.';
+                } catch (Exception $e) {
+                    $error = 'Update failed: ' . htmlspecialchars($e->getMessage());
+                }
             }
         }
     }
 }
+
 
 $page_title = "Profile · Sprint";
 include '../includes/header.php';
