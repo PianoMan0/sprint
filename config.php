@@ -264,4 +264,7 @@ if (php_sapi_name() !== 'cli') {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: no-referrer-when-downgrade');
     header('X-XSS-Protection: 1; mode=block');
+
+    // Baseline CSP to reduce XSS impact. Adjust if you later add inline scripts.
+    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data: https:; media-src 'self' https: data:; worker-src 'none'");
 }

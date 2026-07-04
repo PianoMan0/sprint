@@ -3,8 +3,9 @@ require_once '../config.php';
 require_once '../includes/functions.php';
 require_login();
 
-$event_id = $_GET['event_id'];
+$event_id = intval($_GET['event_id'] ?? 0);
 $event = get_event($pdo, $event_id);
+if (!$event) abort_page('Event not found', 404);
 
 $team = get_user_team($pdo, $event_id, current_user_id());
 $message = '';
@@ -23,6 +24,25 @@ function handle_upload($file, $allowedTypes, $maxBytes, $uploadDir) {
     $dest = $uploadDir . DIRECTORY_SEPARATOR . $filename;
     if (!move_uploaded_file($file['tmp_name'], $dest)) return ['error' => 'Failed to save file'];
     return ['path' => 'uploads/' . $filename];
+}
+
+function delete_upload_if_exists($relativePath, $uploadDir) {
+    if (!$relativePath || !is_string($relativePath)) return;
+    $rel = ltrim($relativePath, '/\\');
+
+    // Only allow deleting within the known upload dir and only for our basename filenames.
+    $expectedPrefix = 'uploads' . DIRECTORY_SEPARATOR;
+    $expectedPrefix2 = 'uploads/';
+
+    if (strpos(str_replace('\\', '/', $rel), 'uploads/') !== 0) return;
+
+    $basename = basename($rel);
+    if ($basename === '' || $basename === '.' || $basename === '..') return;
+
+    $full = $uploadDir . DIRECTORY_SEPARATOR . $basename;
+    if (is_file($full)) {
+        @unlink($full);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -60,12 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'video/mp4' => 'mp4', 'video/webm' => 'webm', 'video/quicktime' => 'mov'
         ];
 
-            if (!empty($_FILES['screenshot']) && $_FILES['screenshot']['error'] === UPLOAD_ERR_OK) {
+        if (!empty($_FILES['screenshot']) && $_FILES['screenshot']['error'] === UPLOAD_ERR_OK) {
             $res = handle_upload($_FILES['screenshot'], $imgTypes, 5 * 1024 * 1024, $uploadDir);
             if (!empty($res['error'])) $message = $res['error']; else $screenshotPath = $res['path'];
         }
 
-            if (!empty($_FILES['video']) && $_FILES['video']['error'] === UPLOAD_ERR_OK) {
+        if (!empty($_FILES['video']) && $_FILES['video']['error'] === UPLOAD_ERR_OK) {
             $res = handle_upload($_FILES['video'], $videoTypes, 100 * 1024 * 1024, $uploadDir);
             if (!empty($res['error'])) $message = $res['error']; else $videoPath = $res['path'];
         }

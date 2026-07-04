@@ -39,6 +39,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ext = $imgTypes[$mime];
                 $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
                 if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+
+                // If replacing, remove previous file from disk (best-effort)
+                if (!empty($screenshotPath)) {
+                    $basename = basename((string)$screenshotPath);
+                    $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
+                    if (is_file($full) && str_starts_with($basename, '')) {
+                        @unlink($full);
+                    }
+                }
+
                 move_uploaded_file($_FILES['screenshot']['tmp_name'], $uploadDir . '/' . $fname);
                 $screenshotPath = 'uploads/' . $fname;
             }
@@ -51,6 +61,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ext = $videoTypes[$mime];
                 $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
                 if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+
+                // If replacing, remove previous file from disk (best-effort)
+                if (!empty($videoPath)) {
+                    $basename = basename((string)$videoPath);
+                    $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
+                    if (is_file($full) && str_starts_with($basename, '')) {
+                        @unlink($full);
+                    }
+                }
+
                 move_uploaded_file($_FILES['video']['tmp_name'], $uploadDir . '/' . $fname);
                 $videoPath = 'uploads/' . $fname;
             }
