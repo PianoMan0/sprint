@@ -2,6 +2,9 @@
 require_once '../config.php';
 require_login();
 
+// Defensive: profile can be hit after OAuth flows where session shape may be incomplete.
+$u = current_user() ?? [];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validate_csrf_token($token)) {
@@ -35,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Refresh defensive user array after POST handling.
+$u = current_user() ?? [];
 
 $page_title = "Profile · Sprint";
 include '../includes/header.php';
@@ -61,17 +66,17 @@ include '../includes/header.php';
 
     <div>
         <label for="name">Display name</label>
-        <input id="name" name="name" type="text" required value="<?= htmlspecialchars(current_user()['name'] ?? '') ?>">
+        <input id="name" name="name" type="text" required value="<?= htmlspecialchars($u['name'] ?? '') ?>">
     </div>
 
     <div style="margin-top:8px;">
         <label>Email</label>
-        <div><?= htmlspecialchars(current_user()['email'] ?? '') ?></div>
+        <div><?= htmlspecialchars($u['email'] ?? '') ?></div>
     </div>
     
     <div style="margin-top:12px;">
         <label for="profile">Bio</label>
-        <textarea id="profile" name="profile" rows="5"><?= htmlspecialchars(current_user()['profile'] ?? '') ?></textarea>
+        <textarea id="profile" name="profile" rows="5"><?= htmlspecialchars($u['profile'] ?? '') ?></textarea>
     </div>
 
     <div style="margin-top:12px;">
@@ -82,26 +87,47 @@ include '../includes/header.php';
 
 <section style="margin-top:18px;">
     <h2>Bio</h2>
-    <p><?= nl2br(htmlspecialchars(current_user()['profile'] ?? '')) ?></p>
+    <p><?= nl2br(htmlspecialchars($u['profile'] ?? '')) ?></p>
 </section>
 
 <section style="margin-top:18px;">
     <h2>Connect Accounts</h2>
-    <p>You can link third-party accounts like GitHub.</p>
-    <p>
-        <a class="btn" href="<?= url('/sprint/auth/github.php') ?>">Connect GitHub</a>
-    </p>
+    <p>Link accounts you use most. Hack Club is the only login provider.</p>
+
+    <?php if (getenv('GITHUB_CLIENT_ID')): ?>
+        <p style="margin-top:10px;">
+            <a class="btn" href="<?= url('/sprint/auth/github.php') ?>" style="width:100%; display:block;">Connect GitHub</a>
+        </p>
+    <?php else: ?>
+        <p class="meta">GitHub isn’t configured on this site.</p>
+    <?php endif; ?>
+
+    <?php if (getenv('SLACK_CLIENT_ID')): ?>
+        <p style="margin-top:10px;">
+            <a class="btn" href="<?= url('/sprint/auth/slack.php') ?>" style="width:100%; display:block;">Connect Slack</a>
+        </p>
+<?php else: ?>
+        <p class="meta">Slack isn’t configured on this site.</p>
+    <?php endif; ?>
+
+    <?php if (getenv('HACKATIME_CLIENT_ID')): ?>
+        <p style="margin-top:10px;">
+            <a class="btn" href="<?= url('/sprint/auth/hackatime.php') ?>" style="width:100%; display:block;">Connect Hackatime</a>
+        </p>
+    <?php else: ?>
+        <p class="meta">Hackatime isn’t configured on this site.</p>
+    <?php endif; ?>
 </section>
 
-<?php
-// Offer a way to claim the organizer role if there are no organizers yet.
+
+
 try {
     $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'organizer'");
     $orgCount = $stmt ? intval($stmt->fetchColumn()) : 0;
 } catch (Exception $e) {
     $orgCount = 0;
 }
-if ($orgCount === 0 && (current_user()['role'] ?? '') !== 'organizer'):
+if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
 ?>
     <section style="margin-top:18px;">
         <h2>Site Setup</h2>
@@ -187,3 +213,4 @@ if ($orgCount === 0 && (current_user()['role'] ?? '') !== 'organizer'):
 </section>
 
 <?php include '../includes/footer.php'; ?>
+

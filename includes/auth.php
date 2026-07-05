@@ -16,11 +16,13 @@ function login_user($user) {
     if (function_exists('session_regenerate_id')) {
         session_regenerate_id(true);
     }
+
+    // Be defensive: OAuth/DB rows may not contain every column.
     $_SESSION['user'] = [
         'id' => $user['id'],
-        'name' => $user['name'],
-        'email' => $user['email'],
-        'role' => $user['role'],
+        'name' => $user['name'] ?? '',
+        'email' => $user['email'] ?? '',
+        'role' => $user['role'] ?? 'participant',
         'slack_username' => $user['slack_username'] ?? ($user['slack'] ?? null),
         'slack_id' => $user['slack_id'] ?? null,
         'openid_sub' => $user['openid_sub'] ?? null,

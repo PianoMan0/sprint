@@ -115,8 +115,8 @@ try {
                         login_user($user);
                         $_SESSION['profile_success'] = 'Logged in via Slack.';
                     } else {
-                        $stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, slack_username, slack_id, profile) VALUES (?,?,?,?,?,?)');
-                        $stmt->execute([$name ?? '', $email, '', null, $provider_user_id, json_encode($data)]);
+$stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, slack_username, slack_id, profile, role) VALUES (?,?,?,?,?,?,?)');
+                        $stmt->execute([$name ?? '', $email, '', null, $provider_user_id, json_encode($data), 'participant']);
                         $id = $pdo->lastInsertId();
                         $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
                         $stmt->execute([$id]);
