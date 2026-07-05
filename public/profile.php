@@ -73,7 +73,7 @@ include '../includes/header.php';
         <label>Email</label>
         <div><?= htmlspecialchars($u['email'] ?? '') ?></div>
     </div>
-    
+
     <div style="margin-top:12px;">
         <label for="profile">Bio</label>
         <textarea id="profile" name="profile" rows="5"><?= htmlspecialchars($u['profile'] ?? '') ?></textarea>
@@ -106,7 +106,7 @@ include '../includes/header.php';
         <p style="margin-top:10px;">
             <a class="btn" href="<?= url('/sprint/auth/slack.php') ?>" style="width:100%; display:block;">Connect Slack</a>
         </p>
-<?php else: ?>
+    <?php else: ?>
         <p class="meta">Slack isn’t configured on this site.</p>
     <?php endif; ?>
 
@@ -119,14 +119,19 @@ include '../includes/header.php';
     <?php endif; ?>
 </section>
 
-
+<?php
+// Everything below is DB-driven; keep it defensive so the page renders even if some queries fail.
 
 try {
-    $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'organizer'");
-    $orgCount = $stmt ? intval($stmt->fetchColumn()) : 0;
+    $orgCount = 0;
+    if (empty($db_connection_failed)) {
+        $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'organizer'");
+        $orgCount = $stmt ? intval($stmt->fetchColumn()) : 0;
+    }
 } catch (Exception $e) {
     $orgCount = 0;
 }
+
 if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
 ?>
     <section style="margin-top:18px;">
@@ -142,23 +147,31 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
     $attended = [];
     if (empty($db_connection_failed)) {
         try {
-            // Events from explicit attendance table
-            $stmt = $pdo->prepare("SELECT e.* FROM events e JOIN user_event_attendance uea ON uea.event_id = e.id WHERE uea.user_id = ? ORDER BY e.start_time DESC");
+            $stmt = $pdo->prepare("SELECT e.*
+                FROM events e
+                JOIN user_event_attendance uea ON uea.event_id = e.id
+                WHERE uea.user_id = ?
+                ORDER BY e.start_time DESC");
             $stmt->execute([current_user_id()]);
             $att1 = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Events where the user was a team member
-            $stmt = $pdo->prepare("SELECT DISTINCT e.* FROM events e JOIN teams t ON t.event_id = e.id JOIN team_members tm ON tm.team_id = t.id WHERE tm.user_id = ? ORDER BY e.start_time DESC");
+            $stmt = $pdo->prepare("SELECT DISTINCT e.*
+                FROM events e
+                JOIN teams t ON t.event_id = e.id
+                JOIN team_members tm ON tm.team_id = t.id
+                WHERE tm.user_id = ?
+                ORDER BY e.start_time DESC");
             $stmt->execute([current_user_id()]);
             $att2 = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $byId = [];
             foreach (array_merge($att1, $att2) as $ev) {
-                $byId[$ev['id']] = $ev;
+                if (isset($ev['id'])) $byId[$ev['id']] = $ev;
             }
             $attended = array_values($byId);
         } catch (Exception $e) {
             // ignore DB errors
+            $attended = [];
         }
     }
 
@@ -167,7 +180,9 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
     } else {
         echo '<ul>';
         foreach ($attended as $e) {
-            echo '<li><a href="' . htmlspecialchars(url('/sprint/public/event.php') . '?id=' . $e['id']) . '">' . htmlspecialchars($e['name']) . '</a> — ' . htmlspecialchars(substr($e['description'] ?? '', 0, 140)) . '</li>';
+            $id = $e['id'] ?? null;
+            if ($id === null) continue;
+            echo '<li><a href="' . htmlspecialchars(url('/sprint/public/event.php') . '?id=' . $id) . '">' . htmlspecialchars($e['name'] ?? '') . '</a> — ' . htmlspecialchars(substr($e['description'] ?? '', 0, 140)) . '</li>';
         }
         echo '</ul>';
     }
@@ -180,11 +195,13 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
     $linked = [];
     if (empty($db_connection_failed)) {
         try {
-            $stmt = $pdo->prepare("SELECT provider, provider_user_id, created_at FROM oauth_accounts WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt = $pdo->prepare("SELECT provider, provider_user_id, created_at
+                FROM oauth_accounts WHERE user_id = ?
+                ORDER BY created_at DESC");
             $stmt->execute([current_user_id()]);
             $linked = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            // ignore
+            $linked = [];
         }
     }
     ?>
@@ -195,16 +212,18 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
         <ul>
             <?php foreach ($linked as $l): ?>
                 <li>
-                    <?php if ($l['provider'] === 'github'): ?>
-                        <img src="https://avatars.githubusercontent.com/<?= rawurlencode($l['provider_user_id']) ?>?s=24" alt="" style="vertical-align:middle;width:24px;height:24px;border-radius:4px;margin-right:8px;">
-                        <strong>GitHub</strong> — <a href="https://github.com/<?= rawurlencode($l['provider_user_id']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($l['provider_user_id']) ?></a>
+                    <?php if (($l['provider'] ?? '') === 'github'): ?>
+                        <img src="https://avatars.githubusercontent.com/<?= rawurlencode($l['provider_user_id'] ?? '') ?>?s=24" alt="" style="vertical-align:middle;width:24px;height:24px;border-radius:4px;margin-right:8px;">
+                        <strong>GitHub</strong> —
+                        <a href="https://github.com/<?= rawurlencode($l['provider_user_id'] ?? '') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($l['provider_user_id'] ?? '') ?></a>
                     <?php else: ?>
-                    <?= htmlspecialchars($l['provider']) ?> — <?= htmlspecialchars($l['provider_user_id']) ?>
+                        <?= htmlspecialchars($l['provider'] ?? '') ?> — <?= htmlspecialchars($l['provider_user_id'] ?? '') ?>
                     <?php endif; ?>
+
                     <form method="post" action="<?= url('auth/unlink.php') ?>" style="display:inline;margin-left:8px;">
                         <?= csrf_input_field() ?>
-                        <input type="hidden" name="provider" value="<?= htmlspecialchars($l['provider']) ?>">
-                        <button class="btn" onclick="return confirm('Unlink <?= htmlspecialchars($l['provider']) ?>?')">Unlink</button>
+                        <input type="hidden" name="provider" value="<?= htmlspecialchars($l['provider'] ?? '') ?>">
+                        <button class="btn" onclick="return confirm('Unlink <?= htmlspecialchars($l['provider'] ?? '') ?>?')">Unlink</button>
                     </form>
                 </li>
             <?php endforeach; ?>
