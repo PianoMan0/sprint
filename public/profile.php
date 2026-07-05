@@ -102,13 +102,31 @@ include '../includes/header.php';
         <p class="meta">GitHub isn’t configured on this site.</p>
     <?php endif; ?>
 
-    <?php if (getenv('SLACK_CLIENT_ID')): ?>
+    <?php
+    // Only show “Connect Slack” if the user does not already have a linked Slack account.
+    $hasSlack = false;
+    if (empty($db_connection_failed)) {
+        try {
+            $stmt = $pdo->prepare("SELECT 1 FROM oauth_accounts WHERE user_id = ? AND provider = 'slack' LIMIT 1");
+            $stmt->execute([current_user_id()]);
+            $hasSlack = (bool)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            $hasSlack = false;
+        }
+    }
+    ?>
+
+    <?php if (!$hasSlack && getenv('SLACK_CLIENT_ID')): ?>
+
         <p style="margin-top:10px;">
             <a class="btn" href="<?= url('/sprint/auth/slack.php') ?>" style="width:100%; display:block;">Connect Slack</a>
         </p>
+    <?php elseif ($hasSlack): ?>
+        <p class="meta">Slack is connected.</p>
     <?php else: ?>
         <p class="meta">Slack isn’t configured on this site.</p>
     <?php endif; ?>
+
 
     <?php if (getenv('HACKATIME_CLIENT_ID')): ?>
         <p style="margin-top:10px;">
