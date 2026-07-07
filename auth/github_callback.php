@@ -37,6 +37,14 @@ if (isset($_COOKIE['gh_oauth_state'])) {
     }
 }
 
+if (getenv('OAUTH_DEBUG') === '1') {
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $redir = getenv('GITHUB_REDIRECT_URI') ?: '(auto)';
+    $dbg = "host={$host}\nGITHUB_REDIRECT_URI={$redir}\ncode_present=" . (!empty($code) ? '1' : '0') . "\nstate_present=" . (!empty($state) ? '1' : '0') . "\nsessState_present=" . (!empty($sessState) ? '1' : '0') . "\ncookieState_present=" . (!empty($cookieState) ? '1' : '0') . "\n";
+    @file_put_contents(__DIR__ . '/../logs/oauth_debug.log', date('c') . "\n" . $dbg . "\n", FILE_APPEND | LOCK_EX);
+}
+
+
 $clientId = getenv('GITHUB_CLIENT_ID');
 $clientSecret = getenv('GITHUB_CLIENT_SECRET');
 if (!$clientId || !$clientSecret) {
@@ -61,18 +69,27 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
 $resp = curl_exec($ch);
+$httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 if ($resp === false) {
+    if (getenv('OAUTH_DEBUG') === '1') {
+        @file_put_contents(__DIR__ . '/../logs/oauth_debug.log', date('c') . "\n" . "github_token_exchange: curl_exec_failed\n" . curl_error($ch) . "\n" . "http_status=" . $httpStatus . "\n\n" , FILE_APPEND | LOCK_EX);
+    }
     $_SESSION['profile_error'] = 'Failed to complete GitHub OAuth.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }
 $data = json_decode($resp, true);
 $accessToken = $data['access_token'] ?? null;
 if (!$accessToken) {
+    if (getenv('OAUTH_DEBUG') === '1') {
+        $safeResp = substr((string)$resp, 0, 4000);
+        @file_put_contents(__DIR__ . '/../logs/oauth_debug.log', date('c') . "\n" . "github_token_exchange: no_access_token http_status=" . $httpStatus . "\n" . $safeResp . "\n\n" , FILE_APPEND | LOCK_EX);
+    }
     $_SESSION['profile_error'] = 'No access token from GitHub.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }
+
 
 $ch = curl_init('https://api.github.com/user');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -81,7 +98,7 @@ $userJson = curl_exec($ch);
 $user = json_decode($userJson, true);
 if (!$user || empty($user['login'])) {
     $_SESSION['profile_error'] = 'Failed to fetch GitHub user data.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }
 
@@ -135,5 +152,5 @@ try {
     $_SESSION['profile_error'] = 'Failed to link GitHub: ' . $e->getMessage();
 }
 
-header('Location: ' . url('public/profile.php'));
+header('Location: ' . url('sprint/public/profile.php'));
 exit;

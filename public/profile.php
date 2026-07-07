@@ -1,9 +1,11 @@
 <?php
 require_once '../config.php';
+require_once '../includes/roles.php';
 require_login();
 
 // Defensive: profile can be hit after OAuth flows where session shape may be incomplete.
 $u = current_user() ?? [];
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
@@ -46,12 +48,24 @@ include '../includes/header.php';
 ?>
 
 <h1>Profile</h1>
+
+<?php if (!empty($role_tags)): ?>
+    <div class="card" style="margin-top:0;">
+        <h2>Your role(s)</h2>
+        <div class="meta" style="margin-top:0.5rem;">
+            <?= implode(' · ', $role_tags) ?>
+        </div>
+    </div>
+<?php endif; ?>
+
 <?php if (!empty($error)): ?>
     <div class="error"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 <?php if (!empty($success)): ?>
     <div class="success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
+
+
 <?php if (!empty($_SESSION['profile_error'])): ?>
     <div class="error"><?= htmlspecialchars($_SESSION['profile_error']) ?></div>
     <?php unset($_SESSION['profile_error']); ?>
@@ -61,84 +75,127 @@ include '../includes/header.php';
     <?php unset($_SESSION['profile_success']); ?>
 <?php endif; ?>
 
-<form method="post" action="<?= url('/sprint/public/profile.php') ?>">
-    <?= csrf_input_field() ?>
+<div class="container card-grid">
+    <div class="card">
 
-    <div>
-        <label for="name">Display name</label>
-        <input id="name" name="name" type="text" required value="<?= htmlspecialchars($u['name'] ?? '') ?>">
+        <h2>Edit profile</h2>
+
+        <form method="post" action="<?= url('/sprint/public/profile.php') ?>" class="form">
+            <?= csrf_input_field() ?>
+
+            <label for="name">Display name
+                <input id="name" name="name" type="text" required value="<?= htmlspecialchars($u['name'] ?? '') ?>">
+            </label>
+
+            <label>Email
+                <div><?= htmlspecialchars($u['email'] ?? '') ?></div>
+            </label>
+
+            <label for="profile">Bio
+                <textarea id="profile" name="profile" rows="5"><?= htmlspecialchars($u['profile'] ?? '') ?></textarea>
+            </label>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:0.5rem;">
+                <button class="btn">Save</button>
+                <a class="btn" href="<?= url('/sprint/public/index.php') ?>">Back</a>
+            </div>
+        </form>
+
+        <hr>
+
+        <h2>Bio preview</h2>
+        <p><?= nl2br(htmlspecialchars($u['profile'] ?? '')) ?></p>
     </div>
 
-    <div style="margin-top:8px;">
-        <label>Email</label>
-        <div><?= htmlspecialchars($u['email'] ?? '') ?></div>
-    </div>
+    <div class="card">
+        <h2>Connect accounts</h2>
+        <p>Link accounts you use most. Hack Club is the only login provider.</p>
 
-    <div style="margin-top:12px;">
-        <label for="profile">Bio</label>
-        <textarea id="profile" name="profile" rows="5"><?= htmlspecialchars($u['profile'] ?? '') ?></textarea>
-    </div>
-
-    <div style="margin-top:12px;">
-        <button class="btn">Save</button>
-        <a class="btn" href="<?= url('/sprint/public/index.php') ?>">Back</a>
-    </div>
-</form>
-
-<section style="margin-top:18px;">
-    <h2>Bio</h2>
-    <p><?= nl2br(htmlspecialchars($u['profile'] ?? '')) ?></p>
-</section>
-
-<section style="margin-top:18px;">
-    <h2>Connect Accounts</h2>
-    <p>Link accounts you use most. Hack Club is the only login provider.</p>
-
-    <?php if (getenv('GITHUB_CLIENT_ID')): ?>
-        <p style="margin-top:10px;">
-            <a class="btn" href="<?= url('/sprint/auth/github.php') ?>" style="width:100%; display:block;">Connect GitHub</a>
-        </p>
-    <?php else: ?>
-        <p class="meta">GitHub isn’t configured on this site.</p>
-    <?php endif; ?>
-
-    <?php
-    // Only show “Connect Slack” if the user does not already have a linked Slack account.
-    $hasSlack = false;
-    if (empty($db_connection_failed)) {
-        try {
-            $stmt = $pdo->prepare("SELECT 1 FROM oauth_accounts WHERE user_id = ? AND provider = 'slack' LIMIT 1");
-            $stmt->execute([current_user_id()]);
-            $hasSlack = (bool)$stmt->fetchColumn();
-        } catch (Exception $e) {
-            $hasSlack = false;
+        <?php
+        $hasGithub = false;
+        if (empty($db_connection_failed) && getenv('GITHUB_CLIENT_ID')) {
+            try {
+                $stmt = $pdo->prepare("SELECT 1 FROM oauth_accounts WHERE user_id = ? AND provider = 'github' LIMIT 1");
+                $stmt->execute([current_user_id()]);
+                $hasGithub = (bool)$stmt->fetchColumn();
+            } catch (Exception $e) {
+                $hasGithub = false;
+            }
         }
-    }
-    ?>
+        ?>
 
-    <?php if (!$hasSlack && getenv('SLACK_CLIENT_ID')): ?>
-
-        <p style="margin-top:10px;">
-            <a class="btn" href="<?= url('/sprint/auth/slack.php') ?>" style="width:100%; display:block;">Connect Slack</a>
-        </p>
-    <?php elseif ($hasSlack): ?>
-        <p class="meta">Slack is connected.</p>
-    <?php else: ?>
-        <p class="meta">Slack isn’t configured on this site.</p>
-    <?php endif; ?>
+        <?php if (!getenv('GITHUB_CLIENT_ID')): ?>
+            <p class="meta">GitHub isn’t configured on this site.</p>
+        <?php elseif ($hasGithub): ?>
+            <p class="meta">GitHub is connected.</p>
+        <?php else: ?>
+            <div style="margin-top:8px;">
+                <a class="btn" href="<?= url('/sprint/auth/github.php') ?>" style="width:100%; display:block;">Connect GitHub</a>
+            </div>
+        <?php endif; ?>
 
 
-    <?php if (getenv('HACKATIME_CLIENT_ID')): ?>
-        <p style="margin-top:10px;">
-            <a class="btn" href="<?= url('/sprint/auth/hackatime.php') ?>" style="width:100%; display:block;">Connect Hackatime</a>
-        </p>
-    <?php else: ?>
-        <p class="meta">Hackatime isn’t configured on this site.</p>
-    <?php endif; ?>
-</section>
+        <?php
+        // Only show “Connect Slack” if the user does not already have a linked Slack account.
+        $hasSlack = false;
+        if (empty($db_connection_failed)) {
+            try {
+                $stmt = $pdo->prepare("SELECT 1 FROM oauth_accounts WHERE user_id = ? AND provider = 'slack' LIMIT 1");
+                $stmt->execute([current_user_id()]);
+                $hasSlack = (bool)$stmt->fetchColumn();
+            } catch (Exception $e) {
+                $hasSlack = false;
+            }
+        }
+        ?>
+
+        <?php if (!$hasSlack && getenv('SLACK_CLIENT_ID')): ?>
+            <div style="margin-top:8px;">
+                <a class="btn" href="<?= url('/sprint/auth/slack.php') ?>" style="width:100%; display:block;">Connect Slack</a>
+            </div>
+        <?php elseif ($hasSlack): ?>
+            <p class="meta">Slack is connected.</p>
+        <?php else: ?>
+            <p class="meta">Slack isn’t configured on this site.</p>
+        <?php endif; ?>
+
+        <?php if (getenv('HACKATIME_CLIENT_ID')): ?>
+            <div style="margin-top:8px;">
+                <a class="btn" href="<?= url('/sprint/auth/hackatime.php') ?>" style="width:100%; display:block;">Connect Hackatime</a>
+            </div>
+        <?php else: ?>
+            <p class="meta">Hackatime isn’t configured on this site.</p>
+        <?php endif; ?>
+    </div>
+</div>
 
 <?php
 // Everything below is DB-driven; keep it defensive so the page renders even if some queries fail.
+
+$role_tags = [];
+try {
+    if (empty($db_connection_failed)) {
+        $rawRole = $u['role'] ?? '';
+        if (!is_string($rawRole)) $rawRole = (string)$rawRole;
+
+        $parts = array_map('trim', explode(',', strtolower($rawRole)));
+        $parts = array_values(array_filter($parts, fn($p) => $p !== ''));
+        if (count($parts) === 0) $parts = ['participant'];
+
+        $labels = [
+            'admin' => 'Admin',
+            'organizer' => 'Organizer',
+            'judge' => 'Judge',
+            'participant' => 'Participant',
+        ];
+
+        foreach ($parts as $p) {
+            $role_tags[] = $labels[$p] ?? ucfirst($p);
+        }
+    }
+} catch (Exception $e) {
+    $role_tags = [];
+}
 
 try {
     $orgCount = 0;
@@ -152,15 +209,15 @@ try {
 
 if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
 ?>
-    <section style="margin-top:18px;">
-        <h2>Site Setup</h2>
+    <div class="card" style="margin-top:18px;">
+        <h2>Site setup</h2>
         <p>No organizers exist for this instance yet. If you're the site owner you can claim the organizer role.</p>
-        <p><a class="btn" href="<?= url('/sprint/organizer/claim_organizer.php') ?>">Claim Organizer Role</a></p>
-    </section>
+        <a class="btn" href="<?= url('/sprint/organizer/claim_organizer.php') ?>">Claim organizer role</a>
+    </div>
 <?php endif; ?>
 
-<section style="margin-top:18px;">
-    <h2>Hackathons Attended</h2>
+<div class="card" style="margin-top:18px;">
+    <h2>Hackathons attended</h2>
     <?php
     $attended = [];
     if (empty($db_connection_failed)) {
@@ -196,7 +253,7 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
     if (empty($attended)) {
         echo '<p>No recorded hackathons attended yet.</p>';
     } else {
-        echo '<ul>';
+        echo '<ul class="list">';
         foreach ($attended as $e) {
             $id = $e['id'] ?? null;
             if ($id === null) continue;
@@ -205,9 +262,9 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
         echo '</ul>';
     }
     ?>
-</section>
+</div>
 
-<section style="margin-top:24px;">
+<div class="card" style="margin-top:18px;">
     <h2>Linked accounts</h2>
     <?php
     $linked = [];
@@ -227,7 +284,7 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
     <?php if (empty($linked)): ?>
         <p>No linked third-party accounts.</p>
     <?php else: ?>
-        <ul>
+        <ul class="list">
             <?php foreach ($linked as $l): ?>
                 <li>
                     <?php if (($l['provider'] ?? '') === 'github'): ?>
@@ -247,7 +304,8 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
-</section>
+</div>
 
 <?php include '../includes/footer.php'; ?>
+
 

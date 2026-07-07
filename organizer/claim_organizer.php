@@ -16,6 +16,13 @@ if ($count > 0) {
     exit;
 }
 
+// Backwards-compatibility: if this site uses per-event organizer upgrades,
+// redirect to the organizer conversion flow.
+if (isset($_GET['event_id']) && $_GET['event_id'] !== '') {
+    header('Location: claim_organizer_for_event.php?event_id=' . urlencode((string)$_GET['event_id']));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validate_csrf_token($token)) {

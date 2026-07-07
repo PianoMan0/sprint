@@ -1,6 +1,6 @@
 <?php
 require_once '../config.php';
-require_role('organizer');
+require_role('admin');
 
 $logFile = __DIR__ . '/../logs/db_errors.log';
 $cleared = false;
@@ -27,10 +27,11 @@ include '../includes/header.php';
 <form method="post">
     <?= csrf_input_field() ?>
     <button class="btn">Clear logs</button>
-    <a class="btn" href="<?= url('/sprint/public/db_status.php') ?>">DB Status</a>
+    <a class="btn" href="<?= url('/sprint/admin/db_status.php') ?>">DB Status</a>
 </form>
 
 <h2>db_errors.log</h2>
 <pre class="card sunken" style="white-space:pre-wrap;max-height:400px;overflow:auto;"><?= htmlspecialchars($contents) ?></pre>
 
 <?php include '../includes/footer.php'; ?>
+

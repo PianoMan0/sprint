@@ -25,6 +25,10 @@ include '../includes/header.php';
         <a class="btn" href="teams.php?event_id=<?= intval($event_id) ?>">Teams</a>
         <a class="btn" href="submit.php?event_id=<?= intval($event_id) ?>">Submit</a>
         <a class="btn" href="leaderboard.php?event_id=<?= intval($event_id) ?>">Leaderboard</a>
+
+        <?php if (!is_organizer()): ?>
+            <a class="btn outline" href="<?= url('/sprint/organizer/claim_organizer_for_event.php') . '?event_id=' . intval($event_id) ?>">Become organizer</a>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 

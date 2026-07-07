@@ -25,8 +25,12 @@ if (!empty($maintenance_mode) && !(function_exists('current_user') && function_e
 
         <?php if (current_user_id()): ?>
             <?php if (is_admin()): ?>
-                <a href="<?= url('/sprint/organizer/dashboard.php') ?>">Admin</a>
+                <a href="<?= url('/sprint/admin/dashboard.php') ?>">Admin</a>
+            <?php else: ?>
+                <a href="<?= url('/sprint/admin/admin_login.php') ?>">Admin</a>
             <?php endif; ?>
+
+
 
             <?php if (is_organizer()): ?>
                 <a href="<?= url('/sprint/organizer/dashboard.php') ?>">Organizer</a>

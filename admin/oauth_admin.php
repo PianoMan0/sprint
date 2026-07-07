@@ -1,6 +1,6 @@
 <?php
 require_once '../config.php';
-require_role('organizer');
+require_role('admin');
 
 $page_title = "OAuth Accounts · Sprint";
 include '../includes/header.php';
@@ -44,3 +44,4 @@ function mask($s) {
 </table>
 
 <?php include '../includes/footer.php'; ?>
+
