@@ -43,10 +43,75 @@ include '../includes/header.php';
 <h2>Submissions</h2>
 <div class="card-grid">
 <?php foreach ($submissions as $s): ?>
+    <?php
+    $github = null;
+    try {
+        $github = github_get_cached_repo_preview($pdo, (int)$s['id']);
+    } catch (Exception $e) {
+        $github = null;
+    }
+    ?>
     <div class="card">
         <h3><?= htmlspecialchars($s['title']) ?></h3>
         <p class="meta">Team: <?= htmlspecialchars($s['team_name']) ?></p>
         <p><?= htmlspecialchars(substr($s['description'], 0, 120)) ?>...</p>
+
+        <?php if (!empty($s['repo_url'])): ?>
+            <div style="margin-top:10px;">
+                <div class="meta" style="margin-bottom:4px;">Repo</div>
+                <a class="link" href="<?= htmlspecialchars($s['repo_url']) ?>" target="_blank" rel="noopener noreferrer">
+                    <?= htmlspecialchars($s['repo_url']) ?>
+                </a>
+
+                <?php if (!empty($github) && !empty($github['html_url'])): ?>
+                    <div class="card" style="margin-top:10px; padding:12px; background:rgba(0,0,0,0.03);">
+                        <div style="display:flex; align-items:flex-start; gap:10px;">
+                            <?php if (!empty($github['avatar_url'])): ?>
+                                <img src="<?= htmlspecialchars($github['avatar_url']) ?>" alt="" style="width:36px;height:36px;border-radius:8px;flex:0 0 auto;">
+                            <?php endif; ?>
+                            <div>
+                                <div style="font-weight:700;">
+                                    <a href="<?= htmlspecialchars($github['html_url']) ?>" target="_blank" rel="noopener noreferrer">
+                                        <?= htmlspecialchars($github['repo_full_name'] ?? '') ?>
+                                    </a>
+                                </div>
+                                <?php if (!empty($github['language'])): ?>
+                                    <div class="meta">Language: <?= htmlspecialchars($github['language']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($github['description'])): ?>
+                                    <div style="margin-top:6px;">
+                                        <?= htmlspecialchars(substr((string)$github['description'], 0, 160)) ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="meta" style="margin-top:8px;">
+                                    ⭐ <?= htmlspecialchars((string)($github['stargazers_count'] ?? 0)) ?> &nbsp; · &nbsp;
+                                    Forks: <?= htmlspecialchars((string)($github['forks_count'] ?? 0)) ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php if (current_user_id()): ?>
+                            <form method="post" action="<?= url('/sprint/public/refresh_github_preview.php') ?>" style="margin-top:10px;">
+                                <?= csrf_input_field() ?>
+                                <input type="hidden" name="event_id" value="<?= (int)$event_id ?>">
+                                <input type="hidden" name="submission_id" value="<?= (int)$s['id'] ?>">
+                                <button class="btn outline" type="submit">Refresh GitHub preview</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <?php if (current_user_id()): ?>
+                        <form method="post" action="<?= url('/sprint/public/refresh_github_preview.php') ?>" style="margin-top:10px;">
+                            <?= csrf_input_field() ?>
+                            <input type="hidden" name="event_id" value="<?= (int)$event_id ?>">
+                            <input type="hidden" name="submission_id" value="<?= (int)$s['id'] ?>">
+                            <button class="btn outline" type="submit">Generate GitHub preview</button>
+                        </form>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (!empty($s['screenshot_path'])): ?>
             <div style="margin-top:8px;"><img src="<?= htmlspecialchars(url($s['screenshot_path'])) ?>" alt="Screenshot" style="max-width:100%;border-radius:8px;"></div>
         <?php endif; ?>
@@ -59,3 +124,4 @@ include '../includes/header.php';
 </div>
 
 <?php include '../includes/footer.php'; ?>
+

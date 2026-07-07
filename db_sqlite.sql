@@ -141,3 +141,24 @@ CREATE TABLE IF NOT EXISTS emergency_alerts (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- GitHub repo preview cache for submissions (API enrichment)
+CREATE TABLE IF NOT EXISTS github_repo_cache (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id INTEGER NOT NULL UNIQUE,
+  provider TEXT NOT NULL DEFAULT 'github',
+  repo_full_name TEXT NOT NULL,
+  owner_login TEXT NOT NULL,
+  repo_name TEXT NOT NULL,
+  repo_url TEXT NOT NULL,
+  description TEXT DEFAULT NULL,
+  language TEXT DEFAULT NULL,
+  stargazers_count INTEGER DEFAULT NULL,
+  forks_count INTEGER DEFAULT NULL,
+  watchers_count INTEGER DEFAULT NULL,
+  html_url TEXT DEFAULT NULL,
+  avatar_url TEXT DEFAULT NULL,
+  fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
+);
+

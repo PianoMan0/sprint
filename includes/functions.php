@@ -1,6 +1,9 @@
 <?php
 
+require_once __DIR__ . '/github_preview.php';
+
 function get_events($pdo) {
+
     $stmt = $pdo->query("SELECT * FROM events ORDER BY start_time ASC");
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
