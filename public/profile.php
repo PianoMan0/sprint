@@ -6,7 +6,6 @@ require_login();
 // Defensive: profile can be hit after OAuth flows where session shape may be incomplete.
 $u = current_user() ?? [];
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validate_csrf_token($token)) {
@@ -27,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success = 'Profile updated locally (DB unavailable).';
             } else {
                 try {
-                    $stmt = $pdo->prepare("UPDATE users SET name = ?, profile = ? WHERE id = ?");
+                    $stmt = $pdo->prepare('UPDATE users SET name = ?, profile = ? WHERE id = ?');
                     $stmt->execute([$name, $profile_text, current_user_id()]);
                     $_SESSION['user']['name'] = $name;
                     $_SESSION['user']['profile'] = $profile_text;
@@ -43,12 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Refresh defensive user array after POST handling.
 $u = current_user() ?? [];
 
-$page_title = "Profile · Sprint";
+$page_title = 'Profile · Sprint';
 include '../includes/header.php';
 ?>
 
+<?php
+// Compatibility: older broken edits may have left stray PHP string fragments.
+// If they exist, they should have been removed when this file was restored.
+?>
 <h1>Profile</h1>
-
 
 <div class="card" style="margin-top:12px;">
     <div style="display:flex; align-items:center; gap:12px;">
@@ -61,14 +63,7 @@ include '../includes/header.php';
 </div>
 
 <?php if (!empty($role_tags)): ?>
-            <div class="meta"><?= htmlspecialchars($u['email'] ?? '') ?></div>
-        </div>
-    </div>
-</div>
-
-<?php if (!empty($role_tags)): ?>
-
-    <div class="card" style="margin-top:0;">
+    <div class="card" style="margin-top:12px;">
         <h2>Your role(s)</h2>
         <div class="meta" style="margin-top:0.5rem;">
             <?= implode(' · ', $role_tags) ?>
@@ -82,7 +77,6 @@ include '../includes/header.php';
 <?php if (!empty($success)): ?>
     <div class="success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
-
 
 <?php if (!empty($_SESSION['profile_error'])): ?>
     <div class="error"><?= htmlspecialchars($_SESSION['profile_error']) ?></div>
@@ -152,9 +146,7 @@ include '../includes/header.php';
             </div>
         <?php endif; ?>
 
-
         <?php
-        // Only show “Connect Slack” if the user does not already have a linked Slack account.
         $hasSlack = false;
         if (empty($db_connection_failed)) {
             try {
@@ -263,7 +255,6 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
             }
             $attended = array_values($byId);
         } catch (Exception $e) {
-            // ignore DB errors
             $attended = [];
         }
     }
@@ -325,5 +316,4 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
 </div>
 
 <?php include '../includes/footer.php'; ?>
-
 
