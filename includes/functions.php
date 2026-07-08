@@ -89,6 +89,18 @@ function csrf_input_field() {
     return "<input type=\"hidden\" name=\"csrf_token\" value=\"$token\">";
 }
 
+function secure_redirect(string $url): void {
+    // Prevent open-redirect by only allowing app-relative redirects.
+    // This codebase uses url('...') to build paths, but enforce it anyway.
+    $url = (string)$url;
+    if (!preg_match('#^/[^\s]*$#', $url)) {
+        $url = url('/public/index.php');
+    }
+    header('Location: ' . $url);
+    exit;
+}
+
+
 function validate_csrf_token($token) {
     ensure_session_started();
     if (empty($_SESSION['csrf_token']) || empty($token)) return false;
@@ -100,6 +112,17 @@ function gravatar_url($email, $size = 40, $default = 'identicon') {
     $hash = md5($e);
     return "https://www.gravatar.com/avatar/{$hash}?s=" . intval($size) . "&d=" . urlencode($default);
 }
+
+function user_avatar_url(array $user, int $size = 32): string {
+    // Prefer Slack avatar when available.
+    if (!empty($user['slack_avatar_url']) && is_string($user['slack_avatar_url'])) {
+        return $user['slack_avatar_url'];
+    }
+    // Fall back to Gravatar.
+    $email = $user['email'] ?? '';
+    return gravatar_url($email, $size);
+}
+
 
 // Send a simple message to Slack using a bot token configured in the environment.
 function send_slack_message($text, $channel = null) {

@@ -41,7 +41,7 @@ if (!empty($maintenance_mode) && !(function_exists('current_user') && function_e
             <?php endif; ?>
 
             <span class="nav-user">
-                <img src="<?= gravatar_url(current_user()['email'], 32) ?>" alt="" style="width:32px;height:32px;border-radius:999px;vertical-align:middle;margin-right:8px;">
+                <img src="<?= htmlspecialchars(user_avatar_url(current_user(), 32), ENT_QUOTES, 'UTF-8') ?>" alt="" style="width:32px;height:32px;border-radius:999px;vertical-align:middle;margin-right:8px;">
                 <span style="vertical-align:middle;display:inline-block;">
                     <?= htmlspecialchars(current_user()['name']) ?>
                     <?php if (!empty(current_user()['verification_status'])): ?>

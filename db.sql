@@ -27,6 +27,7 @@ CREATE TABLE users (
   openid_sub VARCHAR(255) DEFAULT NULL,
   verification_status TINYINT(1) DEFAULT 0,
   profile TEXT DEFAULT NULL,
+  slack_avatar_url VARCHAR(512) DEFAULT NULL,
   role ENUM('organizer','judge','participant','admin') DEFAULT 'participant',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

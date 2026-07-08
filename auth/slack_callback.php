@@ -68,10 +68,32 @@ try {
         $acct = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($acct) {
-            $stmt = $pdo->prepare('UPDATE oauth_accounts SET access_token=?, expires_at=? WHERE id=?');
-            $stmt->execute([$authed_user_token, null, $acct['acct_id']]);
+                    $stmt = $pdo->prepare('UPDATE oauth_accounts SET access_token=?, expires_at=? WHERE id=?');
+                    $stmt->execute([$authed_user_token, null, $acct['acct_id']]);
 
-            if (!empty($acct['user_id'])) {
+                    // If we can fetch Slack profile info, persist avatar for UI.
+                    if (!empty($authed_user_token)) {
+                        $avatar = null;
+                        try {
+                            $ch2 = curl_init('https://slack.com/api/users.info?user=' . urlencode($provider_user_id));
+                            curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $authed_user_token, 'Accept: application/json']);
+                            $info = curl_exec($ch2);
+                            $infoData = json_decode($info, true);
+                            if (!empty($infoData['ok']) && !empty($infoData['user'])) {
+                                $profile = $infoData['user']['profile'] ?? [];
+                                $avatar = $profile['image_512'] ?? $profile['image_192'] ?? $profile['image_72'] ?? $profile['image_48'] ?? $profile['image_32'] ?? $profile['image_24'] ?? null;
+                            }
+                        } catch (Exception $e) {
+                            $avatar = null;
+                        }
+                        if (!empty($avatar)) {
+                            $upd = $pdo->prepare('UPDATE users SET slack_avatar_url = ? WHERE id = ?');
+                            $upd->execute([$avatar, $acct['user_id']]);
+                        }
+                    }
+
+                    if (!empty($acct['user_id'])) {
                 $uStmt = $pdo->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
                 $uStmt->execute([$acct['user_id']]);
                 $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
@@ -87,7 +109,7 @@ try {
 
         } else {
             // No oauth account record yet. Try to fetch email if we have a user token.
-            $email = null; $name = null;
+            $email = null; $name = null; $avatar = null;
             if ($authed_user_token) {
                 $ch2 = curl_init('https://slack.com/api/users.info?user=' . urlencode($provider_user_id));
                 curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
@@ -97,6 +119,12 @@ try {
                 if (!empty($infoData['ok']) && !empty($infoData['user'])) {
                     $name = $infoData['user']['real_name'] ?? $infoData['user']['name'] ?? null;
                     $email = $infoData['user']['profile']['email'] ?? null;
+
+                    // Slack profile picture:
+                    // - 'image_24'/'image_32'/'image_48'/'image_72' on many plans.
+                    // - fall back to the largest available.
+                    $profile = $infoData['user']['profile'] ?? [];
+                    $avatar = $profile['image_512'] ?? $profile['image_192'] ?? $profile['image_72'] ?? $profile['image_48'] ?? $profile['image_32'] ?? $profile['image_24'] ?? null;
                 }
             }
 
@@ -115,8 +143,19 @@ try {
                         login_user($user);
                         $_SESSION['profile_success'] = 'Logged in via Slack.';
                     } else {
-$stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, slack_username, slack_id, profile, role) VALUES (?,?,?,?,?,?,?)');
-                        $stmt->execute([$name ?? '', $email, '', null, $provider_user_id, json_encode($data), 'participant']);
+                        // Create a new local user from Slack.
+                        // Note: we persist slack_avatar_url when available so UI can show Slack images.
+                        $stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, slack_username, slack_id, profile, slack_avatar_url, role) VALUES (?,?,?,?,?,?,?,?)');
+                        $stmt->execute([
+                            $name ?? '',
+                            $email,
+                            '',
+                            null,
+                            $provider_user_id,
+                            json_encode($data),
+                            $avatar,
+                            'participant'
+                        ]);
                         $id = $pdo->lastInsertId();
                         $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
                         $stmt->execute([$id]);

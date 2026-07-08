@@ -16,26 +16,73 @@ if (is_admin()) {
     exit;
 }
 
+// Basic in-session rate limiting for admin password attempts.
+// Stores recent attempt timestamps; resets after a cooldown.
+function admin_login_rate_limit_ok(int $maxAttempts = 8, int $windowSeconds = 10, int $cooldownSeconds = 30): bool {
+    ensure_session_started();
+
+    $now = time();
+    $key = 'admin_login_attempts';
+    $cooldownKey = 'admin_login_cooldown_until';
+
+    $cooldownUntil = isset($_SESSION[$cooldownKey]) ? (int)$_SESSION[$cooldownKey] : 0;
+    if ($cooldownUntil > $now) {
+        return false;
+    }
+
+    if (!isset($_SESSION[$key]) || !is_array($_SESSION[$key])) {
+        $_SESSION[$key] = [];
+    }
+
+    // Keep only attempts within the window.
+    $_SESSION[$key] = array_values(array_filter($_SESSION[$key], fn($t) => is_int($t) || is_numeric($t)));
+    $_SESSION[$key] = array_values(array_filter($_SESSION[$key], fn($t) => ((int)$t) >= ($now - $windowSeconds)));
+
+    if (count($_SESSION[$key]) >= $maxAttempts) {
+        $_SESSION[$cooldownKey] = $now + $cooldownSeconds;
+        return false;
+    }
+
+    return true;
+}
+
+function admin_login_rate_limit_record_attempt(): void {
+    ensure_session_started();
+    $key = 'admin_login_attempts';
+    $now = time();
+    if (!isset($_SESSION[$key]) || !is_array($_SESSION[$key])) {
+        $_SESSION[$key] = [];
+    }
+    $_SESSION[$key][] = $now;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validate_csrf_token($token)) {
         abort_page('Invalid CSRF token', 400);
     }
 
-    $password = (string)($_POST['password'] ?? '');
-    $expected = (string)(getenv('ADMIN_PASSWORD') ?: '');
-
-    if ($expected === '') {
-        $error = 'Admin password is not configured. Set ADMIN_PASSWORD in your environment.';
-    } elseif (!hash_equals($expected, $password)) {
-        $error = 'Incorrect admin password.';
+    if (!admin_login_rate_limit_ok()) {
+        $error = 'Too many admin login attempts. Please wait and try again.';
     } else {
-        // Must be logged in to elevate role.
-        if (!current_user_id()) {
-            $success = 'Login required before becoming admin.';
-            header('Location: ../auth/login.php');
-            exit;
-        }
+        $password = (string)($_POST['password'] ?? '');
+        $expected = (string)(getenv('ADMIN_PASSWORD') ?: '');
+
+        if ($expected === '') {
+            $error = 'Admin password is not configured. Set ADMIN_PASSWORD in your environment.';
+        } elseif (!hash_equals($expected, $password)) {
+            admin_login_rate_limit_record_attempt();
+            $error = 'Incorrect admin password.';
+            if (function_exists('log_db_error')) {
+                log_db_error('SECURITY: admin_login failed for user_id=' . (string)(current_user_id() ?? 'null') . ' ip=' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+            }
+        } else {
+            // Must be logged in to elevate role.
+            if (!current_user_id()) {
+                $success = 'Login required before becoming admin.';
+                header('Location: ../auth/login.php');
+                exit;
+            }
 
         try {
             $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?");

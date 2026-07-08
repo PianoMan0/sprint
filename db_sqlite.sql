@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
   openid_sub TEXT,
   verification_status INTEGER DEFAULT 0,
   profile TEXT,
+  slack_avatar_url TEXT DEFAULT NULL,
   role TEXT DEFAULT 'participant',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

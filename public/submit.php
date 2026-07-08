@@ -31,18 +31,37 @@ function delete_upload_if_exists($relativePath, $uploadDir) {
     $rel = ltrim($relativePath, '/\\');
 
     // Only allow deleting within the known upload dir and only for our basename filenames.
-    $expectedPrefix = 'uploads' . DIRECTORY_SEPARATOR;
-    $expectedPrefix2 = 'uploads/';
+    $normalized = str_replace('\\', '/', $rel);
+    if (!str_starts_with($normalized, 'uploads/')) return;
 
-    if (strpos(str_replace('\\', '/', $rel), 'uploads/') !== 0) return;
-
-    $basename = basename($rel);
+    $basename = basename($normalized);
     if ($basename === '' || $basename === '.' || $basename === '..') return;
 
     $full = $uploadDir . DIRECTORY_SEPARATOR . $basename;
     if (is_file($full)) {
         @unlink($full);
     }
+}
+
+function normalize_submission_text(string $s, int $maxLen): string {
+    $s = trim($s);
+    if (mb_strlen($s) > $maxLen) {
+        $s = mb_substr($s, 0, $maxLen);
+    }
+    return $s;
+}
+
+function validate_http_url_or_empty(string $url, int $maxLen = 2048): ?string {
+    $url = trim($url);
+    if ($url === '') return null;
+    if (mb_strlen($url) > $maxLen) return null;
+    // Basic defense: allow only http(s)
+    $parts = parse_url($url);
+    if (!$parts || empty($parts['scheme'])) return null;
+    $scheme = strtolower((string)$parts['scheme']);
+    if (!in_array($scheme, ['http', 'https'], true)) return null;
+    if (empty($parts['host'])) return null;
+    return $url;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -89,6 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $res = handle_upload($_FILES['video'], $videoTypes, 100 * 1024 * 1024, $uploadDir);
             if (!empty($res['error'])) $message = $res['error']; else $videoPath = $res['path'];
         }
+
+        // Server-side caps + validation to reduce stored injection surface.
+        $title = normalize_submission_text((string)$title, 120);
+        $description = normalize_submission_text((string)$description, 50000);
+        $repo = validate_http_url_or_empty((string)$repo, 2048) ?? '';
+        $demo = validate_http_url_or_empty((string)$demo, 2048) ?? '';
 
         if ($team && $title) {
             $stmt = $pdo->prepare("INSERT INTO submissions (event_id, team_id, title, description, repo_url, demo_url, screenshot_path, video_path) VALUES (?,?,?,?,?,?,?,?)");

@@ -49,7 +49,25 @@ include '../includes/header.php';
 
 <h1>Profile</h1>
 
+
+<div class="card" style="margin-top:12px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <img src="<?= htmlspecialchars(user_avatar_url($u, 48), ENT_QUOTES, 'UTF-8') ?>" alt="" style="width:48px;height:48px;border-radius:999px;">
+        <div>
+            <div style="font-weight:800; font-size:1.1rem;"><?= htmlspecialchars($u['name'] ?? '') ?></div>
+            <div class="meta"><?= htmlspecialchars($u['email'] ?? '') ?></div>
+        </div>
+    </div>
+</div>
+
 <?php if (!empty($role_tags)): ?>
+            <div class="meta"><?= htmlspecialchars($u['email'] ?? '') ?></div>
+        </div>
+    </div>
+</div>
+
+<?php if (!empty($role_tags)): ?>
+
     <div class="card" style="margin-top:0;">
         <h2>Your role(s)</h2>
         <div class="meta" style="margin-top:0.5rem;">

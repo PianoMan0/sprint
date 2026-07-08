@@ -8,9 +8,29 @@ $submission = get_submission($pdo, $id);
 
 if (!$submission) abort_page('Submission not found', 404);
 
-$team = get_user_team($pdo, $submission['event_id'], current_user_id());
+$team = get_user_team($pdo, (int)$submission['event_id'], current_user_id());
 if (!$team || $team['id'] !== $submission['team_id']) {
     abort_page('You cannot edit this submission', 403);
+}
+
+function normalize_submission_text(string $s, int $maxLen): string {
+    $s = trim($s);
+    if (mb_strlen($s) > $maxLen) {
+        $s = mb_substr($s, 0, $maxLen);
+    }
+    return $s;
+}
+
+function validate_http_url_or_empty(string $url, int $maxLen = 2048): ?string {
+    $url = trim($url);
+    if ($url === '') return null;
+    if (mb_strlen($url) > $maxLen) return null;
+    $parts = parse_url($url);
+    if (!$parts || empty($parts['scheme'])) return null;
+    $scheme = strtolower((string)$parts['scheme']);
+    if (!in_array($scheme, ['http', 'https'], true)) return null;
+    if (empty($parts['host'])) return null;
+    return $url;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,6 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = trim($_POST['description']);
         $repo = trim($_POST['repo_url']);
         $demo = trim($_POST['demo_url']);
+
+        // Server-side caps + validation to reduce stored injection surface.
+        $title = normalize_submission_text($title, 120);
+        $description = normalize_submission_text($description, 50000);
+        $repo = validate_http_url_or_empty($repo, 2048) ?? '';
+        $demo = validate_http_url_or_empty($demo, 2048) ?? '';
 
         // Handle optional replacement uploads
         $uploadDir = __DIR__ . '/uploads';
@@ -44,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($screenshotPath)) {
                     $basename = basename((string)$screenshotPath);
                     $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
-                    if (is_file($full) && str_starts_with($basename, '')) {
+                    if (is_file($full)) {
                         @unlink($full);
                     }
                 }
@@ -66,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($videoPath)) {
                     $basename = basename((string)$videoPath);
                     $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
-                    if (is_file($full) && str_starts_with($basename, '')) {
+                    if (is_file($full)) {
                         @unlink($full);
                     }
                 }
