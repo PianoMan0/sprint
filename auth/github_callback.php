@@ -110,6 +110,8 @@ if (getenv('OAUTH_DEBUG') === '1') {
 
 $provider = 'github';
 $provider_user_id = $user['login'];
+$avatar_url = $user['avatar_url'] ?? null;
+
 
 // Link or login via oauth_accounts. If an oauth_account exists, log the
 // associated user in. If no oauth_account exists, attach it to the current
@@ -140,9 +142,15 @@ try {
 
     } else {
         // No oauth account record yet.
-        if (current_user_id()) {
+            if (current_user_id()) {
             $stmt = $pdo->prepare('INSERT INTO oauth_accounts (user_id, provider, provider_user_id, access_token, created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)');
             $stmt->execute([current_user_id(), $provider, $provider_user_id, $accessToken]);
+
+            if (!empty($avatar_url)) {
+                $upd = $pdo->prepare('UPDATE users SET github_avatar_url = ? WHERE id = ?');
+                $upd->execute([$avatar_url, current_user_id()]);
+            }
+
             $_SESSION['profile_success'] = 'GitHub account linked.';
         } else {
             $_SESSION['profile_error'] = 'No matching account found. Please log in first to link your GitHub account.';

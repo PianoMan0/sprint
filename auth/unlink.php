@@ -3,7 +3,7 @@ require_once '../config.php';
 require_login();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 }
 
@@ -13,14 +13,14 @@ $provider = $_POST['provider'] ?? '';
 if (!validate_csrf_token($token)) {
     http_response_code(400);
     $_SESSION['profile_error'] = 'Invalid CSRF token.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 }
 
 $provider = trim((string)$provider);
 if ($provider === '') {
     $_SESSION['profile_error'] = 'Missing provider.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 }
 
@@ -38,18 +38,42 @@ try {
 
     if ($linked <= 1 && !$hasPassword) {
         $_SESSION['profile_error'] = 'Cannot unlink the only login method for your account. Add another login method first.';
-        header('Location: ' . url('public/profile.php'));
+        header('Location: ' . url('/sprint/public/profile.php'));
         exit;
     }
 
-    $stmt = $pdo->prepare("DELETE FROM oauth_accounts WHERE provider = ? AND user_id = ?");
-    $stmt->execute([$provider, current_user_id()]);
+    $userId = current_user_id();
+
+    // If unlinking GitHub, clear stored GitHub avatar when it was the last GitHub connection.
+    if (strtolower($provider) === 'github') {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM oauth_accounts WHERE provider = 'github' AND user_id = ?");
+        $stmt->execute([$userId]);
+        $beforeCnt = intval($stmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+
+        $stmt = $pdo->prepare("DELETE FROM oauth_accounts WHERE provider = ? AND user_id = ?");
+        $stmt->execute([$provider, $userId]);
+
+        $afterCnt = $beforeCnt > 0 ? max(0, $beforeCnt - 1) : 0;
+
+        if ($afterCnt === 0) {
+            $upd = $pdo->prepare('UPDATE users SET github_avatar_url = NULL WHERE id = ?');
+            $upd->execute([$userId]);
+
+            // Also update session user if it's present.
+            if (!empty($_SESSION['user'])) {
+                $_SESSION['user']['github_avatar_url'] = null;
+            }
+        }
+    } else {
+        $stmt = $pdo->prepare("DELETE FROM oauth_accounts WHERE provider = ? AND user_id = ?");
+        $stmt->execute([$provider, $userId]);
+    }
 
     $_SESSION['profile_success'] = 'Unlinked ' . htmlspecialchars($provider) . ' account.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 } catch (Exception $e) {
     $_SESSION['profile_error'] = 'Unlink failed: ' . htmlspecialchars($e->getMessage());
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 }

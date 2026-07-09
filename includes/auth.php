@@ -28,6 +28,9 @@ function login_user($user) {
         'openid_sub' => $user['openid_sub'] ?? null,
         'verification_status' => $user['verification_status'] ?? 0,
         'profile' => $user['profile'] ?? null,
+        // Optional avatar URL (Slack today; GitHub will populate as well)
+        'slack_avatar_url' => $user['slack_avatar_url'] ?? null,
+        'github_avatar_url' => $user['github_avatar_url'] ?? null,
     ];
 }
 

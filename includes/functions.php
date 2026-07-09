@@ -119,27 +119,22 @@ function user_avatar_url(array $user, int $size = 32): string {
         return $user['slack_avatar_url'];
     }
 
-    // If this user has a linked GitHub oauth account, use the GitHub avatar.
-    // We only have oauth_accounts rows for github in some code paths, but
-    // `provider_user_id` is stored in oauth_accounts. Since this helper may
-    // be called without a DB handle, accept a `github_avatar_url` if the
-    // caller already populated it; otherwise fall back to a deterministic
-    // GitHub avatar URL using provider_user_id.
+    // Prefer GitHub avatar when available (stored in users.github_avatar_url).
+    // This is what we want for “Sprint users” who authenticate via GitHub.
     if (!empty($user['github_avatar_url']) && is_string($user['github_avatar_url'])) {
         return $user['github_avatar_url'];
     }
 
-    if (!empty($user['github_provider_user_id']) && is_string($user['github_provider_user_id'])) {
-        $ghId = rawurlencode($user['github_provider_user_id']);
-        // GitHub avatars require the actual avatar URL; but we can build the
-        // avatar endpoint by ID only if we had it. So we use a commonly
-        // working pattern only when caller already set a URL.
+    // Some callers may pass a pre-hydrated GitHub avatar under different keys.
+    if (!empty($user['avatar_url']) && is_string($user['avatar_url'])) {
+        return $user['avatar_url'];
     }
 
     // Fall back to Gravatar.
     $email = $user['email'] ?? '';
     return gravatar_url($email, $size);
 }
+
 
 
 

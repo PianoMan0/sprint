@@ -304,7 +304,7 @@ if ($orgCount === 0 && (($u['role'] ?? '') !== 'organizer')):
                         <?= htmlspecialchars($l['provider'] ?? '') ?> — <?= htmlspecialchars($l['provider_user_id'] ?? '') ?>
                     <?php endif; ?>
 
-                    <form method="post" action="<?= url('auth/unlink.php') ?>" style="display:inline;margin-left:8px;">
+                    <form method="post" action="<?= url('/sprint/auth/unlink.php') ?>" style="display:inline;margin-left:8px;">
                         <?= csrf_input_field() ?>
                         <input type="hidden" name="provider" value="<?= htmlspecialchars($l['provider'] ?? '') ?>">
                         <button class="btn" onclick="return confirm('Unlink <?= htmlspecialchars($l['provider'] ?? '') ?>?')">Unlink</button>
