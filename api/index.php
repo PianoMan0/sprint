@@ -136,7 +136,7 @@ try {
                 http_response_code(201);
                 $id = $pdo->lastInsertId();
 
-                if (isset($countKey) && isset($_SESSION[$countKey])) {
+                if (!empty($timeKey) && !empty($countKey) && isset($_SESSION[$countKey])) {
                     $_SESSION[$countKey] = (int)$_SESSION[$countKey] + 1;
                 }
 
@@ -154,6 +154,13 @@ try {
     }
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Server error', 'message' => $e->getMessage()]);
+    // Avoid leaking internal exception details to clients.
+    if (function_exists('log_db_error')) {
+        log_db_error('API error: ' . $e->getMessage());
+    } else {
+        error_log('API error: ' . $e->getMessage());
+    }
+    echo json_encode(['error' => 'Server error']);
     exit;
 }
+

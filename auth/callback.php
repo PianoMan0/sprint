@@ -39,7 +39,7 @@ $state = $_GET['state'] ?? '';
 // actually matches another provider's state (e.g. GitHub), forward the
 // callback to that provider's handler so misconfigured redirect URLs are
 // handled gracefully.
-$cookieState = $_COOKIE['hc_oauth_state'] ?? null;
+$cookieState = null; // Intentionally disabled: OAuth state must be validated via session only.
 $ghSessState = $_SESSION['gh_oauth_state'] ?? null;
 $ghCookieState = $_COOKIE['gh_oauth_state'] ?? null;
 
@@ -47,16 +47,6 @@ $validState = false;
 if (!empty($_SESSION['hc_oauth_state']) && hash_equals($_SESSION['hc_oauth_state'], $state)) {
     $validState = true;
     unset($_SESSION['hc_oauth_state']);
-} elseif ($cookieState && hash_equals($cookieState, $state)) {
-    $validState = true;
-    $cookieDomain = isset($_SERVER['HTTP_HOST']) ? preg_replace('/:\\d+$/', '', $_SERVER['HTTP_HOST']) : '';
-    if (PHP_VERSION_ID >= 70300) {
-        $opts = ['expires' => time() - 3600, 'path' => '/', 'samesite' => 'Lax'];
-        if ($cookieDomain !== '') $opts['domain'] = $cookieDomain;
-        setcookie('hc_oauth_state', '', $opts);
-    } else {
-        setcookie('hc_oauth_state', '', time() - 3600, '/');
-    }
 }
 
 if (!$validState) {
@@ -66,6 +56,7 @@ if (!$validState) {
         header('Location: ' . url('auth/github_callback.php') . '?' . $qry);
         exit;
     }
+
 
     http_response_code(400);
     $loginUrl = url('auth/login.php');
@@ -318,6 +309,13 @@ try {
     exit;
 } catch (Exception $e) {
     http_response_code(500);
-    echo "<p>Unexpected error: " . htmlspecialchars($e->getMessage()) . "</p>";
+    // Avoid leaking internal exception details to the client.
+    if (function_exists('log_db_error')) {
+        log_db_error('OAuth callback error: ' . $e->getMessage());
+    } else {
+        error_log('OAuth callback error: ' . $e->getMessage());
+    }
+    echo "<p>Unexpected error.</p>";
     exit;
 }
+

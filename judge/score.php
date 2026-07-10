@@ -37,25 +37,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400);
         $message = "Invalid CSRF token.";
     } else {
-        foreach ($categories as $c) {
-        $score = intval($_POST['score_' . $c['id']]);
-        $comment = trim($_POST['comment_' . $c['id']]);
+        $judgeId = current_user_id();
 
-        $stmt = $pdo->prepare("
-            INSERT INTO scores (submission_id, judge_id, category, score, comment)
-            VALUES (?,?,?,?,?)
-        ");
-        $stmt->execute([
-            $submission_id,
-            current_user_id(),
-            $c['name'],
-            $score,
-            $comment
-        ]);
-    }
-        $message = "Scores saved.";
+        // Make scoring idempotent to prevent duplicate rows if a judge refreshes.
+        // Use a transaction so we never end up with partial scores.
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("DELETE FROM scores WHERE judge_id = ? AND submission_id = ?")->execute([$judgeId, $submission_id]);
+
+            foreach ($categories as $c) {
+                // Defensive reads: avoid PHP notices + unintended 0 scores when fields are missing.
+                $scoreRaw = $_POST['score_' . $c['id']] ?? 0;
+                $score = intval($scoreRaw);
+                if ($score < 0) $score = 0;
+                if ($score > 10) $score = 10;
+
+                $comment = trim($_POST['comment_' . $c['id']] ?? '');
+                // Optional safety cap to limit stored payload size.
+                if (mb_strlen($comment) > 2000) {
+                    $comment = mb_substr($comment, 0, 2000);
+                }
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO scores (submission_id, judge_id, category, score, comment)
+                    VALUES (?,?,?,?,?)
+                ");
+                $stmt->execute([
+                    $submission_id,
+                    $judgeId,
+                    $c['name'],
+                    $score,
+                    $comment
+                ]);
+            }
+
+            $pdo->commit();
+            $message = "Scores saved.";
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            $message = "Failed to save scores.";
+            if (function_exists('log_db_error')) {
+                log_db_error('Score save failed: ' . $e->getMessage());
+            }
+        }
     }
 }
+
 
 $page_title = "Score Submission · Sprint";
 include '../includes/header.php';
