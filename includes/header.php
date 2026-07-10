@@ -2,22 +2,32 @@
 <?php
 // If maintenance mode is enabled, show the maintenance page to non-admins.
 if (!empty($maintenance_mode) && !(function_exists('current_user') && function_exists('is_admin') && is_admin())) {
+    // Output a maintenance page; admins may still access the site while maintenance is enabled.
     include __DIR__ . '/maintenance.php';
+    exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($page_title) ?></title>
     <link rel="stylesheet" href="<?= url('/sprint/assets/all.css') ?>">
 
     <script src="<?= url('/sprint/assets/app.js') ?>" defer></script>
     <script src="<?= url('/sprint/assets/ui.js') ?>" defer></script>
+
+
+
+    <link rel="icon" href="data:," />
+
 </head>
 
 <body>
-<header class="topbar fade-in">
+<header class="topbar fade-in" role="banner">
+
     <div class="logo"><a href="<?= url('/sprint/public/index.php') ?>">Sprint</a></div>
 
     <nav class="nav">

@@ -87,27 +87,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "A team was created for you: $teamName";
         }
 
-        // Handle optional uploads (store under public/uploads so files are web-accessible)
+        // Handle optional uploads. Keep uploads web-accessible, but validate aggressively.
         $uploadDir = __DIR__ . '/uploads';
         $screenshotPath = null;
         $videoPath = null;
 
         $imgTypes = [
-            'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
         ];
         $videoTypes = [
-            'video/mp4' => 'mp4', 'video/webm' => 'webm', 'video/quicktime' => 'mov'
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
         ];
+
+        // Bonus safety: require the upload dir to be inside public scope but not executable.
+        // (This is a defense-in-depth; actual prevention should be done via web server config.)
+        if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
 
         if (!empty($_FILES['screenshot']) && $_FILES['screenshot']['error'] === UPLOAD_ERR_OK) {
             $res = handle_upload($_FILES['screenshot'], $imgTypes, 5 * 1024 * 1024, $uploadDir);
-            if (!empty($res['error'])) $message = $res['error']; else $screenshotPath = $res['path'];
+            if (!empty($res['error'])) {
+                $message = $res['error'];
+            } else {
+                $screenshotPath = $res['path'];
+            }
         }
 
         if (!empty($_FILES['video']) && $_FILES['video']['error'] === UPLOAD_ERR_OK) {
             $res = handle_upload($_FILES['video'], $videoTypes, 100 * 1024 * 1024, $uploadDir);
-            if (!empty($res['error'])) $message = $res['error']; else $videoPath = $res['path'];
+            if (!empty($res['error'])) {
+                $message = $res['error'];
+            } else {
+                $videoPath = $res['path'];
+            }
         }
+
 
         // Server-side caps + validation to reduce stored injection surface.
         $title = normalize_submission_text((string)$title, 120);

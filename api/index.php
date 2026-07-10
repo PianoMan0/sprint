@@ -69,18 +69,78 @@ try {
         case 'incidents':
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // create incident via API
+                // Security: incidents can be sensitive. Require either:
+                //  - a valid API key (when API_KEY env var is set)
+                //  - AND that requests are same-site CSRF-like (when API_KEY is not set)
+                //
+                // If API_KEY is configured, it is already enforced above for non-GET.
+
+                // Lightweight rate limit (per PHP session) to reduce abuse.
+                // Only active when session is available.
+                if (function_exists('session_status')) {
+                    if (session_status() !== PHP_SESSION_ACTIVE) {
+                        @session_start();
+                    }
+                    $countKey = 'api_incidents_post_count';
+                    $timeKey = 'api_incidents_post_time';
+                    $now = time();
+                    if (empty($_SESSION[$timeKey]) || !is_int($_SESSION[$timeKey])) {
+                        $_SESSION[$timeKey] = $now;
+                        $_SESSION[$countKey] = 0;
+                    }
+                    // reset window every 60 seconds
+                    if (($now - (int)$_SESSION[$timeKey]) >= 60) {
+                        $_SESSION[$timeKey] = $now;
+                        $_SESSION[$countKey] = 0;
+                    }
+                    if (!empty($_SESSION[$countKey]) && (int)$_SESSION[$countKey] >= 10) {
+                        http_response_code(429);
+                        echo json_encode(['error' => 'Rate limit exceeded']);
+                        exit;
+                    }
+                }
+
+                // If API_KEY is not set, require a token field to reduce drive-by posting.
+                // Token is expected in X-CSRF-Token header or api_token field.
+                if (!$apiKey) {
+                    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['api_token'] ?? null);
+                    if (!$token) {
+                        http_response_code(401);
+                        echo json_encode(['error' => 'Missing API auth token']);
+                        exit;
+                    }
+                    $expected = getenv('API_TOKEN') ?: '';
+                    if (!$expected || !hash_equals((string)$expected, (string)$token)) {
+                        http_response_code(401);
+                        echo json_encode(['error' => 'Invalid API auth token']);
+                        exit;
+                    }
+                }
+
                 $raw = json_decode(file_get_contents('php://input'), true) ?: $_POST;
                 $event_id = !empty($raw['event_id']) ? intval($raw['event_id']) : null;
                 $title = trim((string)($raw['title'] ?? ''));
                 $description = trim((string)($raw['description'] ?? ''));
                 $location = trim((string)($raw['location'] ?? ''));
-                $severity = in_array($raw['severity'] ?? 'low', ['low','medium','high']) ? $raw['severity'] : 'low';
+                $severity = in_array($raw['severity'] ?? 'low', ['low','medium','high']) ? (string)$raw['severity'] : 'low';
+
+                if ($title === '' && $description === '') {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Missing incident details']);
+                    exit;
+                }
 
                 $stmt = $pdo->prepare('INSERT INTO emergency_alerts (event_id, user_id, title, description, location, severity) VALUES (?,?,?,?,?,?)');
-                // API-created incidents are unauthenticated (user_id null)
+                // If posting via API, incidents are not linked to a logged-in user.
                 $stmt->execute([$event_id, null, $title, $description, $location, $severity]);
                 http_response_code(201);
-                echo json_encode(['ok' => true, 'id' => $pdo->lastInsertId()]);
+                $id = $pdo->lastInsertId();
+
+                if (isset($countKey) && isset($_SESSION[$countKey])) {
+                    $_SESSION[$countKey] = (int)$_SESSION[$countKey] + 1;
+                }
+
+                echo json_encode(['ok' => true, 'id' => $id]);
             } else {
                 $stmt = $pdo->query('SELECT ea.*, e.name AS event_name FROM emergency_alerts ea LEFT JOIN events e ON e.id=ea.event_id ORDER BY ea.created_at DESC LIMIT 200');
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));

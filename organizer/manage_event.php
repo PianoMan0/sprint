@@ -3,8 +3,17 @@ require_once '../config.php';
 require_once '../includes/functions.php';
 require_role('organizer');
 
-$event_id = $_GET['id'];
+$event_id = (int)($_GET['id'] ?? 0);
 $event = get_event($pdo, $event_id);
+
+// Invalidate simple caches when entering event management.
+$cacheDir = __DIR__ . '/../data/cache';
+if (is_dir($cacheDir)) {
+    foreach (['leaderboard_' . $event_id . '.json', 'events_list.json'] as $f) {
+        @unlink($cacheDir . '/' . $f);
+    }
+}
+
 
 if (!$event) abort_page('Event not found', 404);
 

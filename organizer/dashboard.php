@@ -17,21 +17,6 @@ include '../includes/header.php';
         <p>Start a new hackathon</p>
     </a>
 
-    <a class="card" href="oauth_admin.php">
-        <h2>OAuth Accounts</h2>
-        <p>View linked OAuth accounts and tokens</p>
-    </a>
-
-    <a class="card" href="site_analytics.php">
-        <h2>Site Analytics</h2>
-        <p>Overview of events, users, and submissions</p>
-    </a>
-
-    <a class="card" href="logs.php">
-        <h2>Logs</h2>
-        <p>View application logs and DB status</p>
-    </a>
-
     <?php foreach ($events as $e): ?>
         <a class="card" href="manage_event.php?id=<?= (int)$e['id'] ?>">
             <h2><?= htmlspecialchars($e['name']) ?></h2>

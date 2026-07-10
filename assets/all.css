@@ -113,6 +113,12 @@ html, body {
     --shadow: 0 12px 32px rgba(0,0,0,0.35);
 }
 
+:focus-visible {
+    outline: 3px solid rgba(255, 75, 129, 0.8);
+    outline-offset: 2px;
+}
+
+
 /* LIGHT MODE */
 .light {
     --bg: #f7f7fa;

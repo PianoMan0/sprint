@@ -3,9 +3,9 @@
 function require_login() {
     if (!current_user_id()) {
         if (getenv('HACKCLUB_CLIENT_ID')) {
-            header("Location: " . url('/sprint/auth/oauth.php'));
+header("Location: " . url('/sprint/auth/oauth.php'));
         } else {
-            header("Location: " . url('/sprint/auth/login.php'));
+header("Location: " . url('/sprint/auth/login.php'));
         }
         exit;
     }

@@ -2,10 +2,25 @@
 require_once '../config.php';
 require_once '../includes/functions.php';
 
-$event_id = $_GET['event_id'];
+$event_id = (int)($_GET['event_id'] ?? 0);
 $event = get_event($pdo, $event_id);
+if (!$event) abort_page('Event not found', 404);
 
-$stmt = $pdo->prepare("
+// Cached leaderboard results per event.
+$cacheDir = __DIR__ . '/../data/cache';
+if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+$cacheFile = $cacheDir . '/leaderboard_' . $event_id . '.json';
+$cacheTtl = 20; // seconds
+$rows = null;
+
+$useCache = is_file($cacheFile) && (time() - filemtime($cacheFile) <= $cacheTtl);
+if ($useCache) {
+    $raw = @file_get_contents($cacheFile);
+    $rows = $raw ? json_decode($raw, true) : null;
+}
+
+if (!is_array($rows)) {
+    $stmt = $pdo->prepare("
     SELECT s.*, t.name AS team_name, COALESCE(AVG(scores.score),0) AS avg_score
     FROM submissions s
     JOIN teams t ON t.id = s.team_id
@@ -14,8 +29,10 @@ $stmt = $pdo->prepare("
     GROUP BY s.id
     ORDER BY avg_score DESC
 ");
-$stmt->execute([$event_id]);
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$event_id]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    @file_put_contents($cacheFile, json_encode($rows), LOCK_EX);
+}
 
 $page_title = "Leaderboard · Sprint";
 include '../includes/header.php';

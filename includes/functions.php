@@ -104,8 +104,50 @@ function secure_redirect(string $url): void {
 function validate_csrf_token($token) {
     ensure_session_started();
     if (empty($_SESSION['csrf_token']) || empty($token)) return false;
-    return hash_equals($_SESSION['csrf_token'], $token);
+    return hash_equals($_SESSION['csrf_token'], (string)$token);
 }
+
+function h(?string $s): string {
+    return htmlspecialchars((string)($s ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+function app_request_id(): string {
+
+    ensure_session_started();
+    if (!empty($_SESSION['request_id']) && is_string($_SESSION['request_id'])) {
+        return $_SESSION['request_id'];
+    }
+
+    try {
+        $rid = bin2hex(random_bytes(12));
+    } catch (Exception $e) {
+        $rid = (string)mt_rand(100000, 999999) . '-' . (string)time();
+    }
+
+    $_SESSION['request_id'] = $rid;
+    return $rid;
+}
+
+function log_event(string $level, string $message, array $context = []): void {
+    // Best-effort structured logging.
+    $rid = app_request_id();
+    $line = json_encode([
+        'ts' => date('c'),
+        'level' => strtoupper($level),
+        'request_id' => $rid,
+        'message' => $message,
+        'context' => $context,
+    ], JSON_UNESCAPED_SLASHES);
+
+    $root = __DIR__ . '/..';
+    $logDir = $root . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    $logFile = $logDir . '/app.log';
+    @file_put_contents($logFile, $line . "\n", FILE_APPEND | LOCK_EX);
+}
+
 
 function gravatar_url($email, $size = 40, $default = 'identicon') {
     $e = strtolower(trim((string)$email));

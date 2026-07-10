@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400);
         $message = 'Invalid CSRF token.';
     } else {
-        $event_id = !empty($_POST['event_id']) ? intval($_POST['event_id']) : null;
+        $event_id_raw = $_POST['event_id'] ?? '';
+        $event_id = ($event_id_raw !== '' && $event_id_raw !== null) ? intval($event_id_raw) : null;
         $title = trim((string)($_POST['title'] ?? ''));
         $desc = trim((string)($_POST['description'] ?? ''));
         $location = trim((string)($_POST['location'] ?? ''));
@@ -34,11 +35,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO emergency_alerts (event_id, user_id, title, description, location, severity) VALUES (?,?,?,?,?,?)");
                 $stmt->execute([$event_id, current_user_id(), $title, $desc, $location, $severity]);
                 $_SESSION['profile_success'] = 'Incident reported. Organizers have been notified.';
+                log_event('INFO', 'incident_report_created', [
+                    'event_id' => $event_id !== null ? (int)$event_id : null,
+                    'user_id' => (int)current_user_id(),
+                    'severity' => $severity,
+                ]);
                 header('Location: ' . url('public/profile.php'));
                 exit;
             } catch (Exception $e) {
-                $message = 'Failed to report incident: ' . htmlspecialchars($e->getMessage());
+                log_event('ERROR', 'incident_report_failed', [
+                    'event_id' => $event_id !== null ? (int)$event_id : null,
+                    'user_id' => (int)current_user_id(),
+                    'error' => $e->getMessage(),
+                ]);
+                $message = 'Failed to report incident.';
             }
+
         }
     }
 }

@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function () {
 	noResults.style.padding = '1rem';
 	noResults.style.color = 'var(--muted)';
 	noResults.style.display = 'none';
+	noResults.setAttribute('role', 'status');
+	noResults.setAttribute('aria-live', 'polite');
 	grid.parentNode.insertBefore(noResults, grid.nextSibling);
 
 	const cards = () => Array.from(grid.querySelectorAll('.card'));
@@ -27,3 +29,4 @@ document.addEventListener('DOMContentLoaded', function () {
 		noResults.style.display = any ? 'none' : '';
 	});
 });
+

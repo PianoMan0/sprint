@@ -2,8 +2,26 @@
 require_once '../config.php';
 require_once '../includes/functions.php';
 
-$events = get_events($pdo);
+// Small file-based cache to speed up event listing.
+$cacheDir = __DIR__ . '/../data/cache';
+if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+$cacheFile = $cacheDir . '/events_list.json';
+$cacheTtl = 30; // seconds
+$events = null;
+
+$useCache = is_file($cacheFile) && (time() - filemtime($cacheFile) <= $cacheTtl);
+if ($useCache) {
+    $raw = @file_get_contents($cacheFile);
+    $events = $raw ? json_decode($raw, true) : null;
+}
+
+if (!is_array($events)) {
+    $events = get_events($pdo);
+    @file_put_contents($cacheFile, json_encode($events), LOCK_EX);
+}
+
 $page_title = "Sprint — Hackathons";
+
 
 include '../includes/header.php';
 ?>

@@ -59,48 +59,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $videoTypes = ['video/mp4' => 'mp4', 'video/webm' => 'webm', 'video/quicktime' => 'mov'];
 
         if (!empty($_FILES['screenshot']) && $_FILES['screenshot']['error'] === UPLOAD_ERR_OK) {
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $finfo->file($_FILES['screenshot']['tmp_name']);
-            if (isset($imgTypes[$mime])) {
-                $ext = $imgTypes[$mime];
-                $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
-                if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+            if ((int)$_FILES['screenshot']['size'] > 5 * 1024 * 1024) {
+                $message = 'Screenshot file too large.';
+            } else {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($_FILES['screenshot']['tmp_name']);
+                if (isset($imgTypes[$mime])) {
+                    $ext = $imgTypes[$mime];
+                    $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+                    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
 
-                // If replacing, remove previous file from disk (best-effort)
-                if (!empty($screenshotPath)) {
-                    $basename = basename((string)$screenshotPath);
-                    $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
-                    if (is_file($full)) {
-                        @unlink($full);
+                    // If replacing, remove previous file from disk (best-effort)
+                    if (!empty($screenshotPath)) {
+                        $basename = basename((string)$screenshotPath);
+                        $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
+                        if (is_file($full)) {
+                            @unlink($full);
+                        }
                     }
-                }
 
-                move_uploaded_file($_FILES['screenshot']['tmp_name'], $uploadDir . '/' . $fname);
-                $screenshotPath = 'uploads/' . $fname;
+                    move_uploaded_file($_FILES['screenshot']['tmp_name'], $uploadDir . '/' . $fname);
+                    $screenshotPath = 'uploads/' . $fname;
+                }
             }
         }
+
 
         if (!empty($_FILES['video']) && $_FILES['video']['error'] === UPLOAD_ERR_OK) {
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $finfo->file($_FILES['video']['tmp_name']);
-            if (isset($videoTypes[$mime])) {
-                $ext = $videoTypes[$mime];
-                $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
-                if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+            if ((int)$_FILES['video']['size'] > 100 * 1024 * 1024) {
+                $message = 'Video file too large.';
+            } else {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($_FILES['video']['tmp_name']);
+                if (isset($videoTypes[$mime])) {
+                    $ext = $videoTypes[$mime];
+                    $fname = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+                    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
 
-                // If replacing, remove previous file from disk (best-effort)
-                if (!empty($videoPath)) {
-                    $basename = basename((string)$videoPath);
-                    $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
-                    if (is_file($full)) {
-                        @unlink($full);
+                    // If replacing, remove previous file from disk (best-effort)
+                    if (!empty($videoPath)) {
+                        $basename = basename((string)$videoPath);
+                        $full = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $basename;
+                        if (is_file($full)) {
+                            @unlink($full);
+                        }
                     }
-                }
 
-                move_uploaded_file($_FILES['video']['tmp_name'], $uploadDir . '/' . $fname);
-                $videoPath = 'uploads/' . $fname;
+                    move_uploaded_file($_FILES['video']['tmp_name'], $uploadDir . '/' . $fname);
+                    $videoPath = 'uploads/' . $fname;
+                }
             }
         }
+
 
         $stmt = $pdo->prepare("\
             UPDATE submissions\
