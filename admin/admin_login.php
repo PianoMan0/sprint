@@ -70,35 +70,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($expected === '') {
             $error = 'Admin password is not configured. Set ADMIN_PASSWORD in your environment.';
-        } elseif (!hash_equals($expected, $password)) {
-            admin_login_rate_limit_record_attempt();
-            $error = 'Incorrect admin password.';
-            if (function_exists('log_db_error')) {
-                log_db_error('SECURITY: admin_login failed for user_id=' . (string)(current_user_id() ?? 'null') . ' ip=' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-            }
-        } else {
-            // Must be logged in to elevate role.
-            if (!current_user_id()) {
-                $success = 'Login required before becoming admin.';
-                header('Location: ../auth/login.php');
-                exit;
-            }
+            if (!hash_equals($expected, $password)) {
+                admin_login_rate_limit_record_attempt();
+                $error = 'Incorrect admin password.';
 
-        try {
-            $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
-            $stmt->execute([current_user_id()]);
+                if (function_exists('log_db_error')) {
+                    $uid = current_user_id();
+                    $uidPart = $uid ? (string)$uid : 'null';
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                    log_db_error("SECURITY: admin_login failed for user_id={$uidPart} ip={$ip}");
+                }
+            } else {
+                // Must be logged in to elevate role.
+                $uid = current_user_id();
+                if (!$uid) {
+                    $success = 'Login required before becoming admin.';
+                    header('Location: ../auth/login.php');
+                    exit;
+                }
 
-            if (!empty($_SESSION['user'])) {
-                $_SESSION['user']['role'] = 'admin';
+                try {
+                    $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
+                    $stmt->execute([$uid]);
+
+                    if (!empty($_SESSION['user'])) {
+                        $_SESSION['user']['role'] = 'admin';
+                    }
+
+                    if (function_exists('log_db_error')) {
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                        log_db_error("SECURITY: admin_login success for user_id={$uid} ip={$ip}");
+                    }
+
+                    $success = 'You are now an admin.';
+                    header('Location: dashboard.php');
+                    exit;
+                } catch (Exception $e) {
+                    $error = 'Failed to update role: ' . $e->getMessage();
+                }
             }
-
-            $success = 'You are now an admin.';
-            header('Location: dashboard.php');
-            exit;
-        } catch (Exception $e) {
-            $error = 'Failed to update role: ' . $e->getMessage();
-        }
-    }
 }
 ?>
 

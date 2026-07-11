@@ -100,29 +100,33 @@ try {
                     }
                 }
 
-                // If API_KEY is not set, require a token field to reduce drive-by posting.
-                // Token is expected in X-CSRF-Token header or api_token field.
+                // If API_KEY is not set, disallow unauthenticated writes entirely.
+                // This avoids relying on a static token and session-less rate limiting.
                 if (!$apiKey) {
-                    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['api_token'] ?? null);
-                    if (!$token) {
-                        http_response_code(401);
-                        echo json_encode(['error' => 'Missing API auth token']);
-                        exit;
-                    }
-                    $expected = getenv('API_TOKEN') ?: '';
-                    if (!$expected || !hash_equals((string)$expected, (string)$token)) {
-                        http_response_code(401);
-                        echo json_encode(['error' => 'Invalid API auth token']);
-                        exit;
-                    }
+                    http_response_code(401);
+                    echo json_encode(['error' => 'API_KEY is required for incident creation']);
+                    exit;
                 }
 
                 $raw = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-                $event_id = !empty($raw['event_id']) ? intval($raw['event_id']) : null;
+
+                $event_id = isset($raw['event_id']) ? intval($raw['event_id']) : 0;
                 $title = trim((string)($raw['title'] ?? ''));
                 $description = trim((string)($raw['description'] ?? ''));
                 $location = trim((string)($raw['location'] ?? ''));
                 $severity = in_array($raw['severity'] ?? 'low', ['low','medium','high']) ? (string)$raw['severity'] : 'low';
+
+                // Validate basic inputs.
+                if ($event_id <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Missing or invalid event_id']);
+                    exit;
+                }
+
+                // Hard caps to prevent abuse/storage blowups.
+                $title = mb_substr($title, 0, 120);
+                $description = mb_substr($description, 0, 2000);
+                $location = mb_substr($location, 0, 200);
 
                 if ($title === '' && $description === '') {
                     http_response_code(400);
@@ -130,8 +134,17 @@ try {
                     exit;
                 }
 
+                // Ensure event exists.
+                $evStmt = $pdo->prepare('SELECT id FROM events WHERE id = ?');
+                $evStmt->execute([$event_id]);
+                if (!$evStmt->fetch(PDO::FETCH_ASSOC)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Invalid event_id']);
+                    exit;
+                }
+
                 $stmt = $pdo->prepare('INSERT INTO emergency_alerts (event_id, user_id, title, description, location, severity) VALUES (?,?,?,?,?,?)');
-                // If posting via API, incidents are not linked to a logged-in user.
+                // Incidents are not linked to a logged-in user when posted via API.
                 $stmt->execute([$event_id, null, $title, $description, $location, $severity]);
                 http_response_code(201);
                 $id = $pdo->lastInsertId();

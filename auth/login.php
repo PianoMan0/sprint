@@ -13,7 +13,7 @@ $allowDemo = getenv('ALLOW_DEMO_LOGIN') === '1' || stripos($host, 'localhost') !
 <section class="hero container">
     <div class="ultratitle">Login</div>
     <p class="lead" style="max-width: 720px;">
-        Sprint only supports login & sign up with <strong>Hack Club</strong>. You can connect other accounts (GitHub, Slack, Hackatime) in your profile.
+        Sprint only supports login & sign up with <strong>Hack Club</strong>. You can connect other accounts like Github and Slack in your profile.
     </p>
 </section>
 
@@ -30,19 +30,19 @@ $allowDemo = getenv('ALLOW_DEMO_LOGIN') === '1' || stripos($host, 'localhost') !
                 <a class="btn outline" href="<?= url('/sprint/auth/register.php') ?>" style="flex: 0 0 auto;">Sign up</a>
             </div>
         <?php else: ?>
-            <p>Hack Club OAuth is not configured for this installation.</p>
+            <p>Hack Club OAuth is not working right now, please contact @PianoMan0.</p>
 
             <?php if ($allowDemo): ?>
                 <form method="post" action="<?= url('/sprint/auth/dev_login.php') ?>" style="margin-top:12px;">
                     <?= csrf_input_field() ?>
-                    <button class="btn" style="width:100%; display:block;">Login with Hack Club (Demo)</button>
+                    <button class="btn" style="width:100%; display:block;">Login with Hack Club</button>
                 </form>
                 <p class="meta" style="margin-top:12px;">
                     This creates a temporary demo user for local development. Disable by setting <code>ALLOW_DEMO_LOGIN=0</code>.
                 </p>
             <?php else: ?>
                 <p class="meta" style="margin-top:12px;">
-                    Ask an administrator to configure OAuth by setting <code>HACKCLUB_CLIENT_ID</code> and <code>HACKCLUB_CLIENT_SECRET</code> in your environment or <code>.env</code>.
+                    Please let @PianoMan0 know that oauth is currently broken.
                 </p>
                 <p style="margin-top:14px;">
                     <a class="btn" href="<?= url('/sprint/organizer/oauth_admin.php') ?>" style="width:100%; display:block;">Configure OAuth</a>

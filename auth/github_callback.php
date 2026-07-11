@@ -21,7 +21,7 @@ if (!$validState) {
     }
 
     $_SESSION['profile_error'] = 'Invalid GitHub OAuth state. Please try again.';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }
 
@@ -49,11 +49,11 @@ $clientId = getenv('GITHUB_CLIENT_ID');
 $clientSecret = getenv('GITHUB_CLIENT_SECRET');
 if (!$clientId || !$clientSecret) {
     $_SESSION['profile_error'] = 'GitHub OAuth is not fully configured (client id/secret).';
-    header('Location: ' . url('public/profile.php'));
+    header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }
 
-$redirectUri = getenv('GITHUB_REDIRECT_URI') ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . url('auth/github_callback.php'));
+$redirectUri = getenv('GITHUB_REDIRECT_URI') ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . url('sprint/auth/github_callback.php'));
 
 $post = http_build_query([
     'client_id' => $clientId,
@@ -112,49 +112,65 @@ $provider = 'github';
 $provider_user_id = $user['login'];
 $avatar_url = $user['avatar_url'] ?? null;
 
+// Harden account-linking: only allow linking/sign-in when the user is
+// actively linking via an authenticated intent in this session.
+//
+// We require a session flag set by the profile “connect GitHub” flow.
+// This prevents callback handlers from turning arbitrary valid OAuth callbacks
+// into sign-in for an already-linked account.
+$intentUserId = $_SESSION['oauth_intent_user_id']['github'] ?? null;
+if (empty($intentUserId) || !is_int((int)$intentUserId)) {
+    // Clear any stale intent.
+    unset($_SESSION['oauth_intent_user_id']['github']);
+    $_SESSION['profile_error'] = 'Invalid GitHub OAuth linking session. Please try connecting again.';
+    header('Location: ' . url('sprint/public/profile.php'));
+    exit;
+}
+$intentUserId = (int)$intentUserId;
+unset($_SESSION['oauth_intent_user_id']['github']);
 
-// Link or login via oauth_accounts. If an oauth_account exists, log the
-// associated user in. If no oauth_account exists, attach it to the current
-// logged-in user (if any). Otherwise instruct the user to log in first.
 try {
+    // Upsert oauth account but bind it only to the intended user.
+    // If the provider account is already linked to another user, do not sign in.
     $stmt = $pdo->prepare('SELECT id AS acct_id, user_id FROM oauth_accounts WHERE provider=? AND provider_user_id=? LIMIT 1');
     $stmt->execute([$provider, $provider_user_id]);
     $acct = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($acct) {
-        // Update token and sign in the linked user if possible
+        if (!empty($acct['user_id']) && (int)$acct['user_id'] !== $intentUserId) {
+            $_SESSION['profile_error'] = 'This GitHub account is already linked to another user.';
+            header('Location: ' . url('sprint/public/profile.php'));
+            exit;
+        }
+
+        // Update token but keep user binding.
         $stmt = $pdo->prepare('UPDATE oauth_accounts SET access_token=?, expires_at=? WHERE id=?');
         $stmt->execute([$accessToken, null, $acct['acct_id']]);
 
-        if (!empty($acct['user_id'])) {
-            $uStmt = $pdo->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
-            $uStmt->execute([$acct['user_id']]);
-            $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
-            if ($uRow) {
-                login_user($uRow);
-                $_SESSION['profile_success'] = 'Logged in via GitHub.';
-            } else {
-                $_SESSION['profile_error'] = 'Linked GitHub account found but user record is missing.';
-            }
-        } else {
-            $_SESSION['profile_error'] = 'GitHub account found but not linked to any user.';
+        if ((int)$acct['user_id'] !== $intentUserId) {
+            $uUpd = $pdo->prepare('UPDATE oauth_accounts SET user_id=? WHERE id=?');
+            $uUpd->execute([$intentUserId, $acct['acct_id']]);
         }
-
     } else {
-        // No oauth account record yet.
-            if (current_user_id()) {
-            $stmt = $pdo->prepare('INSERT INTO oauth_accounts (user_id, provider, provider_user_id, access_token, created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)');
-            $stmt->execute([current_user_id(), $provider, $provider_user_id, $accessToken]);
+        $stmt = $pdo->prepare('INSERT INTO oauth_accounts (user_id, provider, provider_user_id, access_token, created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)');
+        $stmt->execute([$intentUserId, $provider, $provider_user_id, $accessToken]);
+    }
 
-            if (!empty($avatar_url)) {
-                $upd = $pdo->prepare('UPDATE users SET github_avatar_url = ? WHERE id = ?');
-                $upd->execute([$avatar_url, current_user_id()]);
-            }
+    // Update avatar on the intended user.
+    if (!empty($avatar_url)) {
+        $upd = $pdo->prepare('UPDATE users SET github_avatar_url = ? WHERE id = ?');
+        $upd->execute([$avatar_url, $intentUserId]);
+    }
 
-            $_SESSION['profile_success'] = 'GitHub account linked.';
-        } else {
-            $_SESSION['profile_error'] = 'No matching account found. Please log in first to link your GitHub account.';
-        }
+    // Finally, sign in the intended user.
+    $uStmt = $pdo->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
+    $uStmt->execute([$intentUserId]);
+    $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+    if ($uRow) {
+        login_user($uRow);
+        $_SESSION['profile_success'] = 'GitHub account connected.';
+    } else {
+        $_SESSION['profile_error'] = 'User record missing for GitHub connection.';
     }
 } catch (Exception $e) {
     $_SESSION['profile_error'] = 'Failed to link GitHub: ' . $e->getMessage();

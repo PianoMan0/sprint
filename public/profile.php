@@ -137,7 +137,7 @@ include '../includes/header.php';
         ?>
 
         <?php if (!getenv('GITHUB_CLIENT_ID')): ?>
-            <p class="meta">GitHub isn’t configured on this site.</p>
+            <p class="meta">GitHub isn’t configured yet.</p>
         <?php elseif ($hasGithub): ?>
             <p class="meta">GitHub is connected.</p>
         <?php else: ?>
@@ -166,7 +166,7 @@ include '../includes/header.php';
         <?php elseif ($hasSlack): ?>
             <p class="meta">Slack is connected.</p>
         <?php else: ?>
-            <p class="meta">Slack isn’t configured on this site.</p>
+            <p class="meta">Slack isn’t configured yet.</p>
         <?php endif; ?>
 
         <?php if (getenv('HACKATIME_CLIENT_ID')): ?>
@@ -174,7 +174,7 @@ include '../includes/header.php';
                 <a class="btn" href="<?= url('/sprint/auth/hackatime.php') ?>" style="width:100%; display:block;">Connect Hackatime</a>
             </div>
         <?php else: ?>
-            <p class="meta">Hackatime isn’t configured on this site.</p>
+            <p class="meta">Hackatime isn’t configured yet.</p>
         <?php endif; ?>
     </div>
 </div>

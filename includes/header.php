@@ -75,7 +75,7 @@ if (!empty($maintenance_mode) && !(function_exists('current_user') && function_e
 <?php if (!empty($db_connection_failed)): ?>
     <div style="background:#fff3cd;color:#856404;padding:8px;text-align:center;border-bottom:1px solid #f0e6b6;">
         Database connection unavailable — site running in degraded mode; some features may be limited. 
-        <a href="<?= url('/sprint/public/db_status.php') ?>">Check DB status</a>
+        <a href="<?= url('/sprint/admin/db_status.php') ?>">Check DB status (admin only)</a>
     </div>
 <?php endif; ?>
 

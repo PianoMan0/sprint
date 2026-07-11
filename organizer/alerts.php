@@ -44,10 +44,10 @@ include '../includes/header.php';
             <form method="post" style="margin-top:8px;">
                 <?= csrf_input_field() ?>
                 <input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
-                <?php if ($a['status'] === 'open'): ?>
+                <?php if (($a['status'] ?? '') === 'open'): ?>
                     <button class="btn" name="action" value="ack">Acknowledge</button>
                 <?php endif; ?>
-                <?php if ($a['status'] !== 'resolved'): ?>
+                <?php if (($a['status'] ?? '') !== 'resolved'): ?>
                     <button class="btn" name="action" value="resolve">Resolve</button>
                 <?php endif; ?>
             </form>

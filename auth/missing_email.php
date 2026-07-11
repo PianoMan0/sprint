@@ -106,7 +106,7 @@ include '../includes/header.php';
     <div class="error"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
-<p>Hack Club did not provide your email address. Please enter the email you'd like to use for your Sprint account.</p>
+<p>Hack Club Auth did not provide your email address. Please enter the email you'd like to use for your Sprint account.</p>
 
 <form method="post" action="<?= url('auth/missing_email.php') ?>">
     <?= csrf_input_field() ?>

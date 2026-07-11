@@ -19,6 +19,14 @@ try {
 
 $_SESSION['gh_oauth_state'] = $state;
 
+// Harden linking flow: capture the intended user for this GitHub connection attempt.
+// We rely on the authenticated session user (server-side). If someone tries to
+// hit this endpoint without being logged in, require_login() blocks it.
+// This makes the GitHub callback able to bind/link only to the current user.
+if (current_user_id()) {
+    $_SESSION['oauth_intent_user_id']['github'] = (int)current_user_id();
+}
+
 // Also set a short-lived cookie fallback for the OAuth state so the callback
 // can validate state even if the session cookie is lost (helps in some setups).
 $cookieOptions = [
