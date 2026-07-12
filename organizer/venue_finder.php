@@ -135,7 +135,7 @@ $page_title = 'Venue Finder · Sprint';
 include '../includes/header.php';
 ?>
 
-<h1>Venue Finder</h1>
+<h1>Venue Finder (Experimental)</h1>
 <p class="meta">Find nearby venue options based on your preferences (location + optional capacity + radius).</p>
 
 <form method="post" class="form" style="margin-bottom:18px;">
@@ -171,10 +171,20 @@ include '../includes/header.php';
         <label>Longitude (optional)
             <input type="text" name="lng" value="<?= htmlspecialchars((string)($filters['lng'] ?? '')) ?>" placeholder="e.g. -97.7431">
         </label>
+
+        <div class="form-row">
+            <button type="button" class="btn" id="use-my-location-btn">Use my location</button>
+        </div>
+
+
+
     </div>
+    <div id="location-status" class="meta" style="margin:6px 0 0; min-height:18px;"></div>
 
     <button class="btn">Search Venues</button>
 </form>
+
+
 
 <h2>Top Venue Matches</h2>
 <?php if (count($top) === 0): ?>
