@@ -16,7 +16,6 @@ if (!$validState) {
     exit;
 }
 
-// Clear fallback cookie
 if (isset($_COOKIE['slack_oauth_state'])) {
     if (PHP_VERSION_ID >= 70300) setcookie('slack_oauth_state', '', ['expires' => time() - 3600, 'path' => '/', 'samesite' => 'Lax']);
     else setcookie('slack_oauth_state', '', time() - 3600, '/');
@@ -25,7 +24,7 @@ if (isset($_COOKIE['slack_oauth_state'])) {
 $clientId = getenv('SLACK_CLIENT_ID');
 $clientSecret = getenv('SLACK_CLIENT_SECRET');
 if (!$clientId || !$clientSecret) {
-    $_SESSION['profile_error'] = 'Slack OAuth is not fully configured (client id/secret).';
+    $_SESSION['profile_error'] = 'Slack OAuth is not working right now, please contact @PianoMan0';
     header('Location: ' . url('/sprint/public/profile.php'));
     exit;
 }
@@ -71,7 +70,6 @@ try {
                     $stmt = $pdo->prepare('UPDATE oauth_accounts SET access_token=?, expires_at=? WHERE id=?');
                     $stmt->execute([$authed_user_token, null, $acct['acct_id']]);
 
-                    // If we can fetch Slack profile info, persist avatar for UI.
                     if (!empty($authed_user_token)) {
                         $avatar = null;
                         try {
@@ -108,7 +106,6 @@ try {
             }
 
         } else {
-            // No oauth account record yet. Try to fetch email if we have a user token.
             $email = null; $name = null; $avatar = null;
             if ($authed_user_token) {
                 $ch2 = curl_init('https://slack.com/api/users.info?user=' . urlencode($provider_user_id));
@@ -120,9 +117,6 @@ try {
                     $name = $infoData['user']['real_name'] ?? $infoData['user']['name'] ?? null;
                     $email = $infoData['user']['profile']['email'] ?? null;
 
-                    // Slack profile picture:
-                    // - 'image_24'/'image_32'/'image_48'/'image_72' on many plans.
-                    // - fall back to the largest available.
                     $profile = $infoData['user']['profile'] ?? [];
                     $avatar = $profile['image_512'] ?? $profile['image_192'] ?? $profile['image_72'] ?? $profile['image_48'] ?? $profile['image_32'] ?? $profile['image_24'] ?? null;
                 }
@@ -143,8 +137,6 @@ try {
                         login_user($user);
                         $_SESSION['profile_success'] = 'Logged in via Slack.';
                     } else {
-                        // Create a new local user from Slack.
-                        // Note: we persist slack_avatar_url when available so UI can show Slack images.
                         $stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, slack_username, slack_id, profile, slack_avatar_url, role) VALUES (?,?,?,?,?,?,?,?)');
                         $stmt->execute([
                             $name ?? '',

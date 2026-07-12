@@ -1,6 +1,4 @@
 <?php
-// scripts/migrate_add_github_avatar_url.php
-// Adds `users.github_avatar_url` column if missing.
 
 $root = dirname(__DIR__);
 require_once $root . '/config.php';

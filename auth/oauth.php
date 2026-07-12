@@ -18,8 +18,6 @@ try {
 
 $_SESSION['hc_oauth_state'] = $state;
 
-// Also set a short-lived cookie fallback for the OAuth state so the callback
-// can validate state even if the session cookie is lost (helps in some setups).
 $cookieOptions = [
     'expires' => time() + 300,
     'path' => '/',
@@ -32,7 +30,6 @@ if ($cookieDomain !== '') $cookieOptions['domain'] = $cookieDomain;
 if (PHP_VERSION_ID >= 70300) {
     setcookie('hc_oauth_state', $state, $cookieOptions);
 } else {
-    // Fallback for older PHP
     setcookie('hc_oauth_state', $state, time() + 300, '/');
 }
 $scope = 'openid profile email name slack_id';
@@ -47,9 +44,6 @@ $params = [
 
 $authUrl = 'https://auth.hackclub.com/oauth/authorize?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
-// If the configured redirect host (explicit env) differs from this host,
-// warn the user and show a confirmation before redirecting. This helps when
-// the OAuth client is registered for a different domain (causing 404s).
 $configuredRedirect = getenv('HACKCLUB_REDIRECT_URI');
 if ($configuredRedirect) {
     $cfg = parse_url($configuredRedirect);
@@ -65,7 +59,6 @@ if ($configuredRedirect) {
         <p>
             <a class="btn" href="<?= htmlspecialchars($authUrl) ?>">Continue to Hack Club</a>
         </p>
-        <p><small>If you want to use a different callback URL for local development, set <code>HACKCLUB_REDIRECT_URI</code> in your <code>.env</code> or register a redirect for your local host in the Hack Club app settings.</small></p>
         <?php
         include '../includes/footer.php';
         exit;

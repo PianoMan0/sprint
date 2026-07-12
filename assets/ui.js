@@ -1,4 +1,4 @@
-// DARK MODE TOGGLE
+// Dark mode toggle
 const toggle = document.querySelector("#theme-toggle");
 
 if (toggle) {
@@ -8,7 +8,6 @@ if (toggle) {
     });
 }
 
-// Load saved theme
 if (localStorage.getItem("theme") === "light") {
     document.body.classList.add("light");
 }

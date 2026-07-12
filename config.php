@@ -1,8 +1,6 @@
 <?php
-// Bootstrap: .env support, DB connection with logging, and friendly errors
 $root = __DIR__;
 
-// Load simple .env file if present
 $envFile = $root . '/.env';
 if (file_exists($envFile) && is_readable($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -24,13 +22,10 @@ if (file_exists($envFile) && is_readable($envFile)) {
     }
 }
 
-// Start session early so OAuth state and other session uses work
-// Configure cookie params to be permissive for OAuth redirects. Use BASE_URL if set.
 $cookiePath = getenv('BASE_URL') ?: '/';
 if ($cookiePath === '') $cookiePath = '/';
 $cookieSecure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') || getenv('FORCE_HTTPS') === '1';
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    // Normalize cookie domain (strip port if present) to avoid invalid domain cookies like "localhost:8000".
     $cookieDomain = isset($_SERVER['HTTP_HOST']) ? preg_replace('/:\\d+$/', '', $_SERVER['HTTP_HOST']) : '';
     if (defined('PHP_VERSION_ID') && PHP_VERSION_ID >= 70300) {
         $params = [
@@ -48,13 +43,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     @session_start();
 }
 
-// NOTE: Hack Club credentials should be provided via environment variables or a
-// `.env` file. The previous behavior of loading credentials from
-// `hackclub_creds.txt` has been removed to avoid requiring plaintext files in
-// the project root. Use `HACKCLUB_CLIENT_ID`, `HACKCLUB_CLIENT_SECRET`, and
-// optional `HACKCLUB_REDIRECT_URI` in your environment instead.
 
-// Database configuration (can be overridden with env vars)
+// Database configuration
 $db_host = getenv('DB_HOST') ?: '127.0.0.1';
 $db_port = getenv('DB_PORT') ?: '3306';
 $db_name = getenv('DB_NAME') ?: 'sprint';
@@ -82,21 +72,16 @@ if (getenv('DB_DSN')) {
     $dsnCandidates[] = getenv('DB_DSN');
 }
 
-// Primary: TCP host:port
 $dsnCandidates[] = "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4";
 
-// If user provided a socket path, try unix_socket
 if ($db_socket) {
     $dsnCandidates[] = "mysql:unix_socket=$db_socket;dbname=$db_name;charset=utf8mb4";
 }
 
-// Try localhost (may use socket depending on system)
 $dsnCandidates[] = "mysql:host=localhost;dbname=$db_name;charset=utf8mb4";
 
-// Helpful for Dockerized PHP connecting to host machine
 $dsnCandidates[] = "mysql:host=host.docker.internal;port=$db_port;dbname=$db_name;charset=utf8mb4";
 
-// Quick connectivity check: log if TCP port closed (1s timeout)
 if ($db_host && is_numeric($db_port)) {
     $fp = @fsockopen($db_host, (int)$db_port, $errno, $errstr, 1);
     if ($fp) {
@@ -112,7 +97,6 @@ foreach ($dsnCandidates as $dsn) {
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_TIMEOUT => 5,
         ]);
-        // Quick test query to ensure connection works
         $pdo->query('SELECT 1');
         break;
     } catch (Exception $e) {
@@ -123,11 +107,9 @@ foreach ($dsnCandidates as $dsn) {
 }
 
 if (!$pdo) {
-    // Attempt SQLite fallback before entering degraded mode.
     $sqliteFile = $root . '/data/sprint.sqlite';
     $useSqlite = getenv('DB_USE_SQLITE') === '1' || (getenv('DB_DSN') && stripos(getenv('DB_DSN'), 'sqlite:') !== false);
     if (!$useSqlite) {
-        // If MySQL failed but the user hasn't explicitly disabled sqlite, try it.
         $useSqlite = true;
     }
 
@@ -135,10 +117,8 @@ if (!$pdo) {
         if (!is_dir($root . '/data')) @mkdir($root . '/data', 0755, true);
         try {
             $pdo = new PDO('sqlite:' . $sqliteFile, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            // Enable foreign keys in SQLite
             $pdo->exec('PRAGMA foreign_keys = ON');
 
-            // Auto-initialize SQLite schema if it's missing but a schema file exists.
             try {
                 $tbl = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='events'");
                 $hasEvents = $tbl && $tbl->fetch();
@@ -157,7 +137,6 @@ if (!$pdo) {
             }
 
             $db_connection_failed = false;
-            // mark that we're using sqlite so scripts can behave accordingly
             putenv('USING_SQLITE=1');
             $_ENV['USING_SQLITE'] = '1';
             $_SERVER['USING_SQLITE'] = '1';
@@ -171,14 +150,11 @@ if (!$pdo) {
 }
 
 if (!$pdo) {
-    // DB connection failed — don't hard-fail the whole app. Instead run in
-    // degraded mode. Log errors and provide a NullPDO shim so pages can still
-    // render (with empty datasets) while the real DB is unavailable.
+    // If the DB connection fails, the site still runs in degraded mode
     $db_connection_failed = true;
     $db_errors = $errors;
     log_db_error("All DSNs failed; entering degraded mode.");
 
-    // Minimal NullStatement/NullPDO implementations used while DB is down.
     class NullPDOStatement {
         public function execute($params = null) { return true; }
         public function fetch($mode = null) { return false; }
@@ -246,9 +222,7 @@ function current_user_id() {
     return $_SESSION['user']['id'] ?? null;
 }
 
-// Maintenance mode: create a file named MAINTENANCE in the project root
-// with an optional message to enable a global maintenance page. Admins
-// will still be able to view the site when logged in.
+// Maintenance mode
 $maintenance_file = $root . '/MAINTENANCE';
 if (file_exists($maintenance_file)) {
     $maintenance_message = trim(@file_get_contents($maintenance_file) ?: 'The site is temporarily unavailable for maintenance.');
@@ -258,13 +232,11 @@ if (file_exists($maintenance_file)) {
     $maintenance_mode = false;
 }
 
-// Security-related response headers (safe defaults). Only send for web requests.
 if (php_sapi_name() !== 'cli') {
     header('X-Frame-Options: SAMEORIGIN');
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: no-referrer-when-downgrade');
     header('X-XSS-Protection: 1; mode=block');
 
-    // Baseline CSP to reduce XSS impact. Adjust if you later add inline scripts.
     header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data: https:; media-src 'self' https: data:; worker-src 'none'");
 }

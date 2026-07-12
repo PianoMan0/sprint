@@ -12,7 +12,7 @@ $clientId = getenv('HACKCLUB_CLIENT_ID');
 <?php if ($clientId): ?>
     <p><a class="btn" href="<?= url('/sprint/auth/oauth.php') ?>">Register with Hack Club</a></p>
 <?php else: ?>
-    <p>Ask an administrator to set <code>HACKCLUB_CLIENT_ID</code> and <code>HACKCLUB_CLIENT_SECRET</code> in the environment or <code>.env</code>.</p>
+    <p>Hack Club Auth is not currently working, please contact @PianoMan0</p>
     <p><a href="<?= url('/sprint/auth/login.php') ?>">Back to login</a></p>
 <?php endif; ?>
 

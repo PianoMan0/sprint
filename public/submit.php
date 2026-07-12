@@ -10,7 +10,6 @@ if (!$event) abort_page('Event not found', 404);
 $team = get_user_team($pdo, $event_id, current_user_id());
 $message = '';
 
-// Helper to handle uploads
 function handle_upload($file, $allowedTypes, $maxBytes, $uploadDir) {
     if (empty($file) || $file['error'] !== UPLOAD_ERR_OK) return null;
     if ($file['size'] > $maxBytes) return ['error' => 'File too large'];
@@ -30,7 +29,6 @@ function delete_upload_if_exists($relativePath, $uploadDir) {
     if (!$relativePath || !is_string($relativePath)) return;
     $rel = ltrim($relativePath, '/\\');
 
-    // Only allow deleting within the known upload dir and only for our basename filenames.
     $normalized = str_replace('\\', '/', $rel);
     if (!str_starts_with($normalized, 'uploads/')) return;
 
@@ -55,7 +53,6 @@ function validate_http_url_or_empty(string $url, int $maxLen = 2048): ?string {
     $url = trim($url);
     if ($url === '') return null;
     if (mb_strlen($url) > $maxLen) return null;
-    // Basic defense: allow only http(s)
     $parts = parse_url($url);
     if (!$parts || empty($parts['scheme'])) return null;
     $scheme = strtolower((string)$parts['scheme']);
@@ -87,7 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "A team was created for you: $teamName";
         }
 
-        // Handle optional uploads. Keep uploads web-accessible, but validate aggressively.
         $uploadDir = __DIR__ . '/uploads';
         $screenshotPath = null;
         $videoPath = null;
@@ -104,8 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'video/quicktime' => 'mov',
         ];
 
-        // Bonus safety: require the upload dir to be inside public scope but not executable.
-        // (This is a defense-in-depth; actual prevention should be done via web server config.)
         if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
 
         if (!empty($_FILES['screenshot']) && $_FILES['screenshot']['error'] === UPLOAD_ERR_OK) {
@@ -127,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
 
-        // Server-side caps + validation to reduce stored injection surface.
         $title = normalize_submission_text((string)$title, 120);
         $description = normalize_submission_text((string)$description, 50000);
         $repo = validate_http_url_or_empty((string)$repo, 2048) ?? '';

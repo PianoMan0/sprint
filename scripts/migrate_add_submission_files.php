@@ -1,11 +1,8 @@
 <?php
-// scripts/migrate_add_submission_files.php
-// Adds `screenshot_path` and `video_path` columns to submissions table if missing.
 $root = dirname(__DIR__);
 require_once $root . '/config.php';
 
 try {
-    // MySQL: check information_schema
     $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     if ($driver === 'mysql') {
         $dbName = getenv('DB_NAME') ?: 'sprint';
@@ -22,7 +19,6 @@ try {
             echo "Added video_path\n";
         }
     } else {
-        // SQLite: try ALTER TABLE ADD COLUMN which is supported
         $stmt = $pdo->query("PRAGMA table_info('submissions')");
         $cols = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) $cols[] = $r['name'];

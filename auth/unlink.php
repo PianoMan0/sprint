@@ -25,7 +25,7 @@ if ($provider === '') {
 }
 
 try {
-    // Ensure user won't lock themselves out: check for other auth methods or password
+    // Make sure users don't lock themselves out
     $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM oauth_accounts WHERE user_id = ?");
     $stmt->execute([current_user_id()]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -44,7 +44,6 @@ try {
 
     $userId = current_user_id();
 
-    // If unlinking GitHub, clear stored GitHub avatar when it was the last GitHub connection.
     if (strtolower($provider) === 'github') {
         $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM oauth_accounts WHERE provider = 'github' AND user_id = ?");
         $stmt->execute([$userId]);
@@ -59,7 +58,6 @@ try {
             $upd = $pdo->prepare('UPDATE users SET github_avatar_url = NULL WHERE id = ?');
             $upd->execute([$userId]);
 
-            // Also update session user if it's present.
             if (!empty($_SESSION['user'])) {
                 $_SESSION['user']['github_avatar_url'] = null;
             }

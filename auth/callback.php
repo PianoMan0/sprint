@@ -5,12 +5,10 @@ $clientId = getenv('HACKCLUB_CLIENT_ID');
 $clientSecret = getenv('HACKCLUB_CLIENT_SECRET');
 if (!$clientId || !$clientSecret) {
     http_response_code(500);
-    echo "<p>Hack Club OAuth is not configured. Set <code>HACKCLUB_CLIENT_ID</code> and <code>HACKCLUB_CLIENT_SECRET</code> in your .env.</p>";
+    echo "<p>Hack Club OAuth is not configured. Please contact @PianoMan0</p>";
     exit;
 }
 
-// Warn if the configured redirect host differs from this host — this often
-// explains 404s where the provider redirects to another domain.
 $configuredRedirect = getenv('HACKCLUB_REDIRECT_URI');
 $redirectHostMismatch = false;
 if ($configuredRedirect) {

@@ -2,7 +2,6 @@
 require_once '../config.php';
 require_once '../includes/functions.php';
 
-// Small file-based cache to speed up event listing.
 $cacheDir = __DIR__ . '/../data/cache';
 if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
 $cacheFile = $cacheDir . '/events_list.json';

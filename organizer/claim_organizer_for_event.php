@@ -14,7 +14,7 @@ if (!$event_id) {
     abort_page('Missing event_id', 400);
 }
 
-// Ensure the event exists
+// Make sure the event exists
 $event = null;
 try {
     $stmt = $pdo->prepare("SELECT id, name FROM events WHERE id = ?");

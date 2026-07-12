@@ -7,14 +7,10 @@ function user_roles_list($user = null): array {
     $raw = $user['role'] ?? '';
     if (!is_string($raw)) $raw = (string)$raw;
 
-    // Support legacy single-role values and also comma-separated multi-role values.
-    // Examples:
-    //  - "participant"
-    //  - "organizer,judge"
     $parts = array_map('trim', explode(',', strtolower($raw)));
     $parts = array_values(array_filter($parts, fn($p) => $p !== ''));
 
-    // Treat empty/missing role as participant for backward compatibility.
+    // Treat empty/missing role as participant
     if (count($parts) === 0) return ['participant'];
 
     return $parts;

@@ -21,7 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 $targetEventId = $eventId ?: 0;
 $repoUrl = '';
 
-// Ensure the submission belongs to the given event and that the current user is on its team.
+// Ensure the submission belongs to the event and that the current user is on its team.
 try {
     $stmt = $pdo->prepare("
         SELECT s.id, s.event_id, s.repo_url, t.id AS team_id

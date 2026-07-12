@@ -1,6 +1,4 @@
 <?php
-// scripts/migrate_add_user_fields.php
-// Adds missing columns to `users` table if they don't exist.
 $root = dirname(__DIR__);
 $envFile = $root . '/.env';
 if (file_exists($envFile) && is_readable($envFile)) {

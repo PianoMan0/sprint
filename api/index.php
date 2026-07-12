@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 
-// Simple JSON API for public data. Usage examples:
+// JSON API for public data. Usage examples:
 // GET /api/index.php?q=events
 // GET /api/index.php?q=events/1
 // GET /api/index.php?q=users/1
@@ -12,7 +12,6 @@ header('Content-Type: application/json; charset=utf-8');
 $q = trim((string)($_GET['q'] ?? ''), '/');
 $parts = $q === '' ? [] : explode('/', $q);
 
-// Optional API key enforcement
 $apiKey = getenv('API_KEY') ?: null;
 if ($apiKey && $_SERVER['REQUEST_METHOD'] !== 'GET') {
     $provided = $_SERVER['HTTP_X_API_KEY'] ?? $_POST['api_key'] ?? null;
@@ -88,7 +87,6 @@ try {
                         $_SESSION[$timeKey] = $now;
                         $_SESSION[$countKey] = 0;
                     }
-                    // reset window every 60 seconds
                     if (($now - (int)$_SESSION[$timeKey]) >= 60) {
                         $_SESSION[$timeKey] = $now;
                         $_SESSION[$countKey] = 0;
@@ -116,14 +114,12 @@ try {
                 $location = trim((string)($raw['location'] ?? ''));
                 $severity = in_array($raw['severity'] ?? 'low', ['low','medium','high']) ? (string)$raw['severity'] : 'low';
 
-                // Validate basic inputs.
                 if ($event_id <= 0) {
                     http_response_code(400);
                     echo json_encode(['error' => 'Missing or invalid event_id']);
                     exit;
                 }
 
-                // Hard caps to prevent abuse/storage blowups.
                 $title = mb_substr($title, 0, 120);
                 $description = mb_substr($description, 0, 2000);
                 $location = mb_substr($location, 0, 200);
@@ -134,7 +130,7 @@ try {
                     exit;
                 }
 
-                // Ensure event exists.
+                // Make sure the event exists
                 $evStmt = $pdo->prepare('SELECT id FROM events WHERE id = ?');
                 $evStmt->execute([$event_id]);
                 if (!$evStmt->fetch(PDO::FETCH_ASSOC)) {
@@ -144,7 +140,6 @@ try {
                 }
 
                 $stmt = $pdo->prepare('INSERT INTO emergency_alerts (event_id, user_id, title, description, location, severity) VALUES (?,?,?,?,?,?)');
-                // Incidents are not linked to a logged-in user when posted via API.
                 $stmt->execute([$event_id, null, $title, $description, $location, $severity]);
                 http_response_code(201);
                 $id = $pdo->lastInsertId();
@@ -167,7 +162,6 @@ try {
     }
 } catch (Exception $e) {
     http_response_code(500);
-    // Avoid leaking internal exception details to clients.
     if (function_exists('log_db_error')) {
         log_db_error('API error: ' . $e->getMessage());
     } else {

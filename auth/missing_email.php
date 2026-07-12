@@ -20,7 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please provide a valid email address.';
     } else {
-        // If DB is down, create an ephemeral session so the user can still be logged in
         if (!empty($db_connection_failed)) {
             $user = [
                 'id' => 'hc_' . ($pending['provider_user_id'] ?? uniqid()),
@@ -41,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user) {
                 $slackId = $pending['slack'] ?? null;
-                $profileJson = null; // no /me data here
+                $profileJson = null;
                 $verified = 0;
                 $openid_sub = $pending['provider_user_id'] ?? null;
 
@@ -61,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
             }
 
-            // Persist OAuth tokens (optional table). If table missing, ignore errors.
             try {
                 $provUid = (string)($pending['provider_user_id'] ?? '');
                 if ($provUid !== '') {

@@ -10,14 +10,13 @@ $success = null;
 
 require_once '../includes/auth.php';
 
-// If already admin, skip.
+// Skip login if the user is already an admin
 if (is_admin()) {
     header('Location: dashboard.php');
     exit;
 }
 
-// Basic in-session rate limiting for admin password attempts.
-// Stores recent attempt timestamps; resets after a cooldown.
+// Rate limiting for admin password attempts.
 function admin_login_rate_limit_ok(int $maxAttempts = 8, int $windowSeconds = 10, int $cooldownSeconds = 30): bool {
     ensure_session_started();
 
@@ -34,7 +33,6 @@ function admin_login_rate_limit_ok(int $maxAttempts = 8, int $windowSeconds = 10
         $_SESSION[$key] = [];
     }
 
-    // Keep only attempts within the window.
     $_SESSION[$key] = array_values(array_filter($_SESSION[$key], fn($t) => is_int($t) || is_numeric($t)));
     $_SESSION[$key] = array_values(array_filter($_SESSION[$key], fn($t) => ((int)$t) >= ($now - $windowSeconds)));
 
@@ -81,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     log_db_error("SECURITY: admin_login failed for user_id={$uidPart} ip={$ip}");
                 }
             } else {
-                // Must be logged in to elevate role.
+                // Must be logged in to become an admin
                 $uid = current_user_id();
                 if (!$uid) {
                     $success = 'Login required before becoming admin.';

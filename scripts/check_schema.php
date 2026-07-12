@@ -1,5 +1,4 @@
 <?php
-// scripts/check_schema.php
 $root = dirname(__DIR__);
 $envFile = $root . '/.env';
 if (file_exists($envFile) && is_readable($envFile)) {
@@ -51,7 +50,6 @@ if (empty($missing)) {
     echo "All expected tables exist.\n";
     exit(0);
 } else {
-    // If running against sqlite and tables missing, suggest sqlite init
     echo "Missing tables: " . implode(', ', $missing) . "\n";
     if (stripos($dsn, 'sqlite') !== false || getenv('DB_USE_SQLITE') === '1') {
         echo "Run: php scripts/init_sqlite.php\n";

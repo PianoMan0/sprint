@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
 
-// Validate code + state. Accept state from session OR the temporary cookie fallback
 $code = $_GET['code'] ?? null;
 $state = $_GET['state'] ?? null;
 $sessState = $_SESSION['gh_oauth_state'] ?? null;
@@ -12,7 +11,6 @@ if ($code && $state) {
     elseif ($cookieState && hash_equals($cookieState, $state)) $validState = true;
 }
 if (!$validState) {
-    // If this state actually belongs to the Hack Club flow, forward there.
     $hcSessState = $_SESSION['hc_oauth_state'] ?? null;
     $hcCookieState = $_COOKIE['hc_oauth_state'] ?? null;
     if (($hcSessState && hash_equals($hcSessState, $state)) || ($hcCookieState && hash_equals($hcCookieState, $state))) {
@@ -25,7 +23,6 @@ if (!$validState) {
     exit;
 }
 
-// Clear fallback cookie (respect configured domain if present)
 if (isset($_COOKIE['gh_oauth_state'])) {
     $cookieDomain = isset($_SERVER['HTTP_HOST']) ? preg_replace('/:\\d+$/', '', $_SERVER['HTTP_HOST']) : '';
     if (PHP_VERSION_ID >= 70300) {
@@ -48,7 +45,7 @@ if (getenv('OAUTH_DEBUG') === '1') {
 $clientId = getenv('GITHUB_CLIENT_ID');
 $clientSecret = getenv('GITHUB_CLIENT_SECRET');
 if (!$clientId || !$clientSecret) {
-    $_SESSION['profile_error'] = 'GitHub OAuth is not fully configured (client id/secret).';
+    $_SESSION['profile_error'] = 'GitHub OAuth is not fully configured, please contact @PianoMan0';
     header('Location: ' . url('sprint/public/profile.php'));
     exit;
 }

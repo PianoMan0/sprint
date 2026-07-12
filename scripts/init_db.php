@@ -1,5 +1,4 @@
 <?php
-// scripts/init_db.php
 // CLI helper to initialize the database schema from db.sql using .env credentials.
 $root = dirname(__DIR__);
 $envFile = $root . '/.env';

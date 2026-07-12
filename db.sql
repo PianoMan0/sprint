@@ -101,7 +101,6 @@ CREATE TABLE judges (
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 );
 
--- OAuth accounts for third-party authentication providers
 CREATE TABLE oauth_accounts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -115,7 +114,7 @@ CREATE TABLE oauth_accounts (
   UNIQUE KEY provider_user (provider, provider_user_id)
 );
 
--- Track explicit user attendance at events (useful when users don't have teams)
+-- Track user attendance at events (useful when users don't have teams)
 CREATE TABLE user_event_attendance (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -126,7 +125,7 @@ CREATE TABLE user_event_attendance (
   UNIQUE KEY user_event (user_id, event_id)
 );
 
--- Emergency/incident reporting table for attendees to notify organizers
+-- Emergency/incident reporting for attendees to notify organizers
 CREATE TABLE emergency_alerts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   event_id INT DEFAULT NULL,
@@ -144,7 +143,6 @@ CREATE TABLE emergency_alerts (
   FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- GitHub repo preview cache for submissions (API enrichment)
 CREATE TABLE github_repo_cache (
   id INT AUTO_INCREMENT PRIMARY KEY,
   submission_id INT NOT NULL UNIQUE,
