@@ -6,8 +6,19 @@ CREATE TABLE events (
   end_time DATETIME,
   visibility ENUM('public','private') DEFAULT 'public',
   judging_mode ENUM('judges','peer') DEFAULT 'judges',
-  created_by INT
+  created_by INT,
+
+  -- Venue / location (optional but enables venue finding)
+  venue_name VARCHAR(255) DEFAULT NULL,
+  venue_address VARCHAR(255) DEFAULT NULL,
+  venue_city VARCHAR(255) DEFAULT NULL,
+  venue_state VARCHAR(255) DEFAULT NULL,
+  venue_country VARCHAR(255) DEFAULT NULL,
+  venue_lat DECIMAL(10,7) DEFAULT NULL,
+  venue_lng DECIMAL(10,7) DEFAULT NULL,
+  venue_capacity INT DEFAULT NULL
 );
+
 
 CREATE TABLE categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -29,8 +40,19 @@ CREATE TABLE users (
   profile TEXT DEFAULT NULL,
   slack_avatar_url VARCHAR(512) DEFAULT NULL,
   role ENUM('organizer','judge','participant','admin') DEFAULT 'participant',
+
+  -- Organizer preference / home location (optional)
+  home_city VARCHAR(255) DEFAULT NULL,
+  home_state VARCHAR(255) DEFAULT NULL,
+  home_country VARCHAR(255) DEFAULT NULL,
+  home_lat DECIMAL(10,7) DEFAULT NULL,
+  home_lng DECIMAL(10,7) DEFAULT NULL,
+  preferred_venue_radius_km INT DEFAULT NULL,
+  preferred_min_venue_capacity INT DEFAULT NULL,
+
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE teams (
   id INT AUTO_INCREMENT PRIMARY KEY,

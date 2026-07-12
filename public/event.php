@@ -20,6 +20,43 @@ include '../includes/header.php';
 <h1><?= htmlspecialchars($event['name']) ?></h1>
 <p><?= nl2br(htmlspecialchars($event['description'])) ?></p>
 
+<?php
+$hasVenue = !empty($event['venue_name']) || !empty($event['venue_address']) || !empty($event['venue_city']) || !empty($event['venue_country']) || !empty($event['venue_lat']) || !empty($event['venue_lng']);
+if ($hasVenue):
+    $venueLine = trim((string)($event['venue_name'] ?? ''));
+    if (!empty($event['venue_address'])) {
+        $venueLine .= ($venueLine !== '' ? ' — ' : '') . $event['venue_address'];
+    }
+    $cityState = trim((string)($event['venue_city'] ?? ''));
+    if (!empty($event['venue_state'])) {
+        $cityState .= ($cityState !== '' ? ', ' : '') . $event['venue_state'];
+    }
+    if ($cityState !== '') {
+        $venueLine .= ($venueLine !== '' ? ' — ' : '') . $cityState;
+    }
+    if (!empty($event['venue_country'])) {
+        $venueLine .= ($venueLine !== '' ? ', ' : '') . $event['venue_country'];
+    }
+?>
+
+<div class="card" style="margin-top:14px;">
+    <div class="meta"><strong>Venue</strong></div>
+    <div><?= htmlspecialchars($venueLine !== '' ? $venueLine : 'Details not available') ?></div>
+
+    <?php if (!empty($event['venue_capacity'])): ?>
+        <div class="meta" style="margin-top:8px;">Capacity: <?= htmlspecialchars((string)$event['venue_capacity']) ?></div>
+    <?php endif; ?>
+
+    <?php if (!empty($event['venue_lat']) && !empty($event['venue_lng'])): ?>
+        <div class="meta" style="margin-top:8px;">
+            Coordinates: <?= htmlspecialchars((string)$event['venue_lat']) ?>, <?= htmlspecialchars((string)$event['venue_lng']) ?>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php endif; ?>
+
+
 <div class="event-actions">
     <?php if (current_user_id()): ?>
         <a class="btn" href="teams.php?event_id=<?= intval($event_id) ?>">Teams</a>

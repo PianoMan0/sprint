@@ -8,8 +8,19 @@ CREATE TABLE IF NOT EXISTS events (
   end_time DATETIME,
   visibility TEXT DEFAULT 'public',
   judging_mode TEXT DEFAULT 'judges',
-  created_by INTEGER
+  created_by INTEGER,
+
+  -- Venue / location (optional but enables venue finding)
+  venue_name TEXT DEFAULT NULL,
+  venue_address TEXT DEFAULT NULL,
+  venue_city TEXT DEFAULT NULL,
+  venue_state TEXT DEFAULT NULL,
+  venue_country TEXT DEFAULT NULL,
+  venue_lat REAL DEFAULT NULL,
+  venue_lng REAL DEFAULT NULL,
+  venue_capacity INTEGER DEFAULT NULL
 );
+
 
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,8 +42,19 @@ CREATE TABLE IF NOT EXISTS users (
   profile TEXT,
   slack_avatar_url TEXT DEFAULT NULL,
   role TEXT DEFAULT 'participant',
+
+  -- Organizer preference / home location (optional)
+  home_city TEXT DEFAULT NULL,
+  home_state TEXT DEFAULT NULL,
+  home_country TEXT DEFAULT NULL,
+  home_lat REAL DEFAULT NULL,
+  home_lng REAL DEFAULT NULL,
+  preferred_venue_radius_km INTEGER DEFAULT NULL,
+  preferred_min_venue_capacity INTEGER DEFAULT NULL,
+
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE IF NOT EXISTS teams (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -17,6 +17,17 @@ include '../includes/header.php';
         <p>Start a new hackathon</p>
     </a>
 
+    <a class="card" href="venue_preferences.php">
+        <h2>Venue Preferences</h2>
+        <p>Set your location + search radius</p>
+    </a>
+
+    <a class="card" href="venue_finder.php">
+        <h2>Venue Finder</h2>
+        <p>Get venue suggestions based on distance & filters</p>
+    </a>
+
+
     <?php foreach ($events as $e): ?>
         <a class="card" href="manage_event.php?id=<?= (int)$e['id'] ?>">
             <h2><?= htmlspecialchars($e['name']) ?></h2>
